@@ -1,0 +1,8 @@
+{
+  "name": "旅遊小幫手",
+  "short_name": "旅遊小幫手",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F0ECDD",
+  "theme_color": "#4A5D84"
+}
