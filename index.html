@@ -765,7 +765,8 @@ useEffect(() => {
                             )}
                             {splitExpenses.length > 0 && (
                                 <div className="p-4 bg-gray-50">
-                                    <h4 className="text-xs font-bold mb-2">結算結果 (均攤 ${Math.ceil(settlements?.perPerson||0).toLocaleString()})</h4>
+                                    <h4 className="text-xs font-bold mb-2">
+ <h4 className="text-xs font-bold mb-2">結算結果 (均攤 NT$ {Math.ceil(settlements?.perPerson || 0).toLocaleString()})</h4>
                                     {settlements?.transactions?.map((t, idx) => (
                                         <div key={idx} className="flex justify-between items-center text-xs p-2 bg-white rounded border mb-1 shadow-sm">
                                             <span className="text-red-500 font-bold">{t.from}</span>
@@ -773,8 +774,8 @@ useEffect(() => {
                                             <span className="text-green-600 font-bold">{t.to}</span>
                                             <span className="font-bold text-indigo-600">NT$ {t.amt.toLocaleString()}</span>
                                         </div>
-                                    ))
-                                    }
+                                    ))}
+                                 
                                     {settlements?.transactions?.length === 0 && <p className="text-xs text-gray-500 text-center py-2">大家互不相欠！🎉</p>}
                                 </div>
                             )}
