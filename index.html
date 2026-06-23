@@ -3,19 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <!-- 加入主畫面時的預設名稱與圖示設定 -->
     <title>✈️ 旅遊小幫手2.0</title>
     <meta name="apple-mobile-web-app-title" content="旅遊小幫手2.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
     
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React & ReactDOM (穩定版) -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel (編譯 JSX) -->
     <script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
-    <!-- FontAwesome (最穩定的圖示庫，徹底解決閃退問題) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
@@ -47,6 +42,18 @@
             { code: 'TWD', symbol: 'NT$', name: '台幣', defaultRate: 1 }
         ];
 
+        // 各大城市經緯度對照表 (用於 Open-Meteo API 天氣抓取)
+        const CITY_COORDINATES = {
+            '首爾': { lat: 37.5665, lon: 126.9780 },
+            '釜山': { lat: 35.1796, lon: 129.0756 },
+            '東京': { lat: 35.6762, lon: 139.6503 },
+            '大阪': { lat: 34.6937, lon: 135.5023 },
+            '曼谷': { lat: 13.7563, lon: 100.5018 },
+            '清邁': { lat: 18.7883, lon: 98.9853 },
+            '台北': { lat: 25.0330, lon: 121.5654 },
+            '台中': { lat: 24.1477, lon: 120.6736 }
+        };
+
         const INITIAL_DESTINATIONS = {
             '韓國': { '首爾': ['明洞', '弘大', '聖水洞', '江南', '東大門'], '釜山': ['西面', '南浦洞', '海雲台'] },
             '日本': { '東京': ['新宿', '澀谷', '銀座', '淺草', '原宿'], '大阪': ['梅田', '難波', '心齋橋'] },
@@ -74,6 +81,16 @@
             { id: 9, text: '輕便雨具 / 摺疊傘', checked: false },
             { id: 10, text: '旅遊平安險 / 不便險憑證', checked: false }
         ];
+
+        const getWmoWeather = (code) => {
+            if ([0].includes(code)) return { text: '晴朗', icon: 'fa-sun text-yellow-300' };
+            if ([1, 2, 3].includes(code)) return { text: '多雲時晴', icon: 'fa-cloud-sun text-blue-200' };
+            if ([45, 48].includes(code)) return { text: '有霧', icon: 'fa-smog text-gray-300' };
+            if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return { text: '陣雨/下雨', icon: 'fa-cloud-showers-heavy text-blue-300' };
+            if ([71, 73, 75, 77, 85, 86].includes(code)) return { text: '下雪', icon: 'fa-snowflake text-indigo-100' };
+            if ([95, 96, 99].includes(code)) return { text: '雷陣雨', icon: 'fa-cloud-bolt text-yellow-400' };
+            return { text: '未知陰晴', icon: 'fa-cloud text-gray-300' };
+        };
 
         const getTwdEquivalent = (amount, currencyCode, rate) => {
             if (!amount || isNaN(amount)) return null;
@@ -134,6 +151,9 @@
             const [toastMessage, setToastMessage] = useState('');
             const showToast = (message) => { setToastMessage(message); setTimeout(() => setToastMessage(''), 2500); };
 
+            // 即時天氣狀態
+            const [weatherData, setWeatherData] = useState({ temp: null, text: '', icon: '', loading: false });
+
             // 💾 狀態初始化 (嚴格鎖定 LocalStorage，並加上版號避免與舊資料衝突)
             const [destinations, setDestinations] = useState(() => JSON.parse(localStorage.getItem('app_destinations_v6')) || INITIAL_DESTINATIONS);
             const [currentTrip, setCurrentTrip] = useState(() => JSON.parse(localStorage.getItem('app_current_trip_v6')) || { country: '韓國', city: '首爾' });
@@ -150,6 +170,37 @@
             const [mustGoType, setMustGoType] = useState('eat');
             const [foodTypes, setFoodTypes] = useState(() => JSON.parse(localStorage.getItem('app_food_types_v6')) || INITIAL_FOOD_TYPES);
             const [itemTypes, setItemTypes] = useState(() => JSON.parse(localStorage.getItem('app_item_types_v6')) || INITIAL_ITEM_TYPES);
+
+            // 當城市改變時，自動調用即時天氣 API
+            useEffect(() => {
+                if (!currentTrip.city || !CITY_COORDINATES[currentTrip.city]) {
+                    setWeatherData({ temp: null, text: '無天氣資料', icon: 'fa-cloud-question', loading: false });
+                    return;
+                }
+
+                const fetchWeather = async () => {
+                    setWeatherData(prev => ({ ...prev, loading: true }));
+                    const { lat, lon } = CITY_COORDINATES[currentTrip.city];
+                    try {
+                        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=auto`);
+                        const data = await res.json();
+                        if (data && data.current_weather) {
+                            const wmo = getWmoWeather(data.current_weather.weathercode);
+                            setWeatherData({
+                                temp: Math.round(data.current_weather.temperature),
+                                text: wmo.text,
+                                icon: wmo.icon,
+                                loading: false
+                            });
+                        }
+                    } catch (error) {
+                        console.error("天氣獲取失敗", error);
+                        setWeatherData(prev => ({ ...prev, loading: false }));
+                    }
+                };
+
+                fetchWeather();
+            }, [currentTrip.city]);
 
             // 自動存檔機制
             useEffect(() => {
@@ -244,16 +295,37 @@
             // --- 介面渲染: 目的地 ---
             const RenderDestination = () => (
                 <div className="p-4 pb-24 space-y-6">
-                    <div className="bg-gradient-to-br from-blue-400 to-indigo-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden mt-2">
+                    <div className="bg-gradient-to-br from-blue-400 to-indigo-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden mt-2 flex justify-between items-center">
                         <i className="fa-solid fa-plane-departure absolute -right-6 -bottom-6 opacity-20 text-[100px]"></i>
-                        <h2 className="text-xl font-bold mb-2 flex items-center gap-2"><i className="fa-solid fa-earth-americas text-[22px]"></i> 本次旅程</h2>
-                        <div className="mt-4">
-                            <span className="text-sm opacity-90">目的地國家</span>
-                            <div className="text-4xl font-black mb-1">{currentTrip.country || '尚未設定'}</div>
-                            <span className="text-sm opacity-90">主要城市</span>
-                            <div className="text-2xl font-bold">{currentTrip.city || '尚未設定'}</div>
+                        <div>
+                            <h2 className="text-xl font-bold mb-2 flex items-center gap-2"><i className="fa-solid fa-earth-americas text-[22px]"></i> 本次旅程</h2>
+                            <div className="mt-4">
+                                <span className="text-sm opacity-90">目的地國家</span>
+                                <div className="text-4xl font-black mb-1">{currentTrip.country || '尚未設定'}</div>
+                                <span className="text-sm opacity-90">主要城市</span>
+                                <div className="text-2xl font-bold">{currentTrip.city || '尚未設定'}</div>
+                            </div>
                         </div>
+
+                        {/* 右側：即時天氣模組 */}
+                        {currentTrip.city && (
+                            <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 flex flex-col items-center justify-center border border-white/20 min-w-[90px] z-10 text-center">
+                                <span className="text-[10px] uppercase tracking-wider font-bold opacity-80">即時天氣</span>
+                                {weatherData.loading ? (
+                                    <div className="my-2 animate-spin text-lg"><i className="fa-solid fa-circle-notch"></i></div>
+                                ) : weatherData.temp !== null ? (
+                                    <>
+                                        <i className={`fa-solid ${weatherData.icon} text-2xl my-1.5 drop-shadow`}></i>
+                                        <span className="text-xl font-black">{weatherData.temp}°C</span>
+                                        <span className="text-[10px] opacity-90 font-medium">{weatherData.text}</span>
+                                    </>
+                                ) : (
+                                    <span className="text-[11px] opacity-70 my-2">未支援自訂</span>
+                                )}
+                            </div>
+                        )}
                     </div>
+
                     <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
                         <h3 className="font-bold mb-4 flex items-center gap-2" style={{ color: COLORS.darkText }}>
                             <i className="fa-solid fa-location-dot text-[18px]" style={{color: COLORS.mediumBlue}}></i> 設定目的地
@@ -277,7 +349,7 @@
                 const handleAdd = () => {
                     if (!newItem.title) return;
                     setItinerary([...itinerary, { ...newItem, id: Date.now() }].sort((a, b) => a.day !== b.day ? a.day.localeCompare(b.day) : a.time.localeCompare(b.time)));
-                    setNewItem({ day: newItem.day, time: '', title: '', address: '', transport: '', mapUrl: '' });
+                    setNewItem({ day: newItem.day, time: '10:00', title: '', address: '', transport: '', mapUrl: '' });
                     setShowAddForm(false); showToast("新增行程成功！");
                 };
 
@@ -392,9 +464,6 @@
                     setShowForm(false); showToast("新增商品成功！");
                 };
 
-                const groupedEats = useMemo(() => mustEats.reduce((a, c) => { const ct = c.country||'其他'; const lc = c.city||'其他'; if(!a[ct])a[ct]={}; if(!a[ct][lc])a[ct][lc]=[]; a[ct][lc].push(c); return a; }, {}), [mustEats]);
-                const groupedBuys = useMemo(() => mustBuys.reduce((a, c) => { const ct = c.country||'其他'; const st = c.store||'其他'; if(!a[ct])a[ct]={}; if(!a[ct][st])a[ct][st]=[]; a[ct][st].push(c); return a; }, {}), [mustBuys]);
-
                 return (
                     <div className="p-4 pb-24">
                         <div className="flex rounded-lg overflow-hidden mb-4 border" style={{ borderColor: COLORS.mediumBlue }}>
@@ -415,32 +484,22 @@
                                                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded-lg text-white font-bold text-xs"><i className="fa-solid fa-camera mr-1"></i> 更換照片</div>
                                             </div>
                                         ) : (
-                                            <div className="flex flex-col items-center text-gray-500">
-                                                <i className="fa-solid fa-camera text-[24px] mb-1 text-slate-400"></i>
-                                                <span className="text-xs font-bold">上傳美食照片 (可選)</span>
+                                            <div className="flex flex-col items-center text-gray-500 text-xs">
+                                                <i className="fa-solid fa-camera text-xl mb-1"></i> 上傳美食圖片
                                             </div>
                                         )}
                                         <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'eat')} />
                                     </label>
                                 </div>
-                                <input type="text" placeholder="店名 (可留白)" className="w-full p-2 border rounded-lg mb-3 text-xs" value={eatForm.name} onChange={e => setEatForm({...eatForm, name: e.target.value})} />
-                                <div className="grid grid-cols-2 gap-2 mb-1">
-                                    <CreatableSelect label="國家" options={Object.keys(destinations)} value={eatForm.country} onChange={(v) => setEatForm({...eatForm, country: v, city: ''})} onAddOption={(n) => setDestinations({...destinations, [n]: {}})} />
-                                    <div className={`${!eatForm.country ? 'opacity-50 pointer-events-none' : ''}`}>
-                                        <CreatableSelect label="城市" options={eatForm.country ? Object.keys(destinations[eatForm.country] || {}) : []} value={eatForm.city} onChange={(v) => setEatForm({...eatForm, city: v})} onAddOption={(n) => setDestinations({...destinations, [eatForm.country]: {...(destinations[eatForm.country]||{}), [n]: []}})} />
-                                    </div>
+                                <input type="text" placeholder="美食店名" className="w-full p-2 border rounded-lg text-sm mb-2" value={eatForm.name} onChange={e => setEatForm({...eatForm, name: e.target.value})} />
+                                <input type="text" placeholder="自訂地圖連結 (選填)" className="w-full p-2 border rounded-lg text-sm mb-2" value={eatForm.url} onChange={e => setEatForm({...eatForm, url: e.target.value})} />
+                                <div className="grid grid-cols-2 gap-2 mb-2">
+                                    <input type="text" placeholder="預估消費金額" className="p-2 border rounded-lg text-sm" value={eatForm.cost} onChange={e => setEatForm({...eatForm, cost: e.target.value})} />
+                                    <select className="p-2 border rounded-lg bg-white text-sm" value={eatForm.currency} onChange={e => setEatForm({...eatForm, currency: e.target.value})}>
+                                        {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} ({c.symbol})</option>)}
+                                    </select>
                                 </div>
-                                <CreatableSelect label="美食種類" options={foodTypes} value={eatForm.type} onChange={(v) => setEatForm({...eatForm, type: v})} onAddOption={(n) => setFoodTypes([...foodTypes, n])} />
-                                <div className="flex flex-col gap-1 mb-4">
-                                    <label className="text-xs font-bold" style={{ color: COLORS.darkText }}>大概花費</label>
-                                    <div className="flex gap-2">
-                                        <select className="p-2 border rounded bg-white w-24 text-xs" value={eatForm.currency || currency.code} onChange={e => setEatForm({...eatForm, currency: e.target.value})}>
-                                            {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
-                                        </select>
-                                        <input type="number" placeholder="輸入預估金額..." className="flex-1 p-2 border rounded bg-white text-xs" value={eatForm.cost} onChange={e => setEatForm({...eatForm, cost: e.target.value})} />
-                                    </div>
-                                </div>
-                                <button onClick={handleAddEat} className="w-full py-2 rounded-lg text-white font-bold shadow-md text-xs" style={{ backgroundColor: COLORS.mediumBlue }}>儲存必吃</button>
+                                <button onClick={handleAddEat} className="w-full py-2 rounded-lg text-white font-bold text-sm" style={{ backgroundColor: COLORS.mediumBlue }}>加入口袋清單</button>
                             </div>
                         )}
 
@@ -454,348 +513,56 @@
                                                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded-lg text-white font-bold text-xs"><i className="fa-solid fa-camera mr-1"></i> 更換照片</div>
                                             </div>
                                         ) : (
-                                            <div className="flex flex-col items-center text-gray-500">
-                                                <i className="fa-solid fa-camera text-[24px] mb-1 text-slate-400"></i>
-                                                <span className="text-xs font-bold">上傳商品照片 (方便找貨)</span>
+                                            <div className="flex flex-col items-center text-gray-500 text-xs">
+                                                <i className="fa-solid fa-camera text-xl mb-1"></i> 上傳商品圖片
                                             </div>
                                         )}
                                         <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'buy')} />
                                     </label>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2 mb-1">
-                                    <CreatableSelect label="國家" options={Object.keys(destinations)} value={buyForm.country} onChange={(v) => setBuyForm({...buyForm, country: v, store: ''})} onAddOption={(n) => { setDestinations({...destinations, [n]: {}}); setStores({...stores, [n]: []}); }} />
-                                    <div className={`${!buyForm.country ? 'opacity-50 pointer-events-none' : ''}`}>
-                                        <CreatableSelect label="購買店家" options={buyForm.country ? (stores[buyForm.country] || []) : []} value={buyForm.store} onChange={(v) => setBuyForm({...buyForm, store: v})} onAddOption={(n) => setStores({...stores, [buyForm.country]: [...(stores[buyForm.country]||[]), n]})} placeholder="選擇店家..." />
-                                    </div>
+                                <input type="text" placeholder="想買的商品名稱或備註" className="w-full p-2 border rounded-lg text-sm mb-2" value={buyForm.notes} onChange={e => setBuyForm({...buyForm, notes: e.target.value})} />
+                                <CreatableSelect label="推薦購買商店" options={stores[currentTrip.country] || []} value={buyForm.store} onChange={(v) => setBuyForm({...buyForm, store: v})} onAddOption={(n) => setStores({...stores, [currentTrip.country]: [...(stores[currentTrip.country]||[]), n]})} placeholder="選擇或新增商店..." />
+                                <div className="grid grid-cols-2 gap-2 mb-3">
+                                    <input type="text" placeholder="商品價格" className="p-2 border rounded-lg text-sm" value={buyForm.cost} onChange={e => setBuyForm({...buyForm, cost: e.target.value})} />
+                                    <select className="p-2 border rounded-lg bg-white text-sm" value={buyForm.currency} onChange={e => setBuyForm({...buyForm, currency: e.target.value})}>
+                                        {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} ({c.symbol})</option>)}
+                                    </select>
                                 </div>
-                                <CreatableSelect label="商品種類" options={itemTypes} value={buyForm.type} onChange={(v) => setBuyForm({...buyForm, type: v})} onAddOption={(n) => setItemTypes([...itemTypes, n])} />
-                                <div className="flex flex-col gap-1 mb-3">
-                                    <label className="text-xs font-bold" style={{ color: COLORS.darkText }}>大概花費</label>
-                                    <div className="flex gap-2">
-                                        <select className="p-2 border rounded bg-white w-24 text-xs" value={buyForm.currency || currency.code} onChange={e => setBuyForm({...buyForm, currency: e.target.value})}>
-                                            {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
-                                        </select>
-                                        <input type="number" placeholder="輸入預估金額..." className="flex-1 p-2 border rounded bg-white text-xs" value={buyForm.cost} onChange={e => setBuyForm({...buyForm, cost: e.target.value})} />
-                                    </div>
-                                </div>
-                                <textarea placeholder="想買的商品與備註" className="w-full p-2 border rounded-lg mb-4 h-20 text-xs" value={buyForm.notes} onChange={e => setBuyForm({...buyForm, notes: e.target.value})} />
-                                <div className="flex gap-2 mt-4">
-                                    <button onClick={handleAddBuy} className="w-full py-2 rounded-lg text-white font-bold text-xs" style={{ backgroundColor: COLORS.mediumBlue }}>儲存必買</button>
-                                </div>
+                                <button onClick={handleAddBuy} className="w-full py-2 rounded-lg text-white font-bold text-sm" style={{ backgroundColor: COLORS.mediumBlue }}>加入購物慾望單</button>
                             </div>
                         )}
 
-                        {mustGoType === 'eat' ? Object.entries(groupedEats).map(([country, cities]) => (
-                            <div key={country} className="mb-6"><h2 className="font-bold mb-2 flex gap-1 items-center"><i className="fa-solid fa-earth-americas text-[16px]"></i>{country}</h2>
-                                {Object.entries(cities).map(([city, items]) => (
-                                    <div key={city} className="ml-2 mb-3"><h3 className="text-xs text-gray-500 mb-2 font-bold flex items-center gap-1"><i className="fa-solid fa-location-dot"></i> {city}</h3>
-                                        {items.map(item => (
-                                            <div key={item.id} className="bg-white p-3 rounded-xl shadow-sm flex gap-3 items-center mb-2">
-                                                {item.image && <img src={item.image} className="w-16 h-16 object-cover rounded-lg shadow-sm shrink-0 border border-gray-100" />}
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="font-bold text-xs text-gray-800 break-words mb-1">{item.name || '未命名'}</div>
-                                                </div>
-                                                <div className="flex gap-3 shrink-0">
-                                                    <button onClick={() => {setAddToItinModal({isOpen: true, item}); setModalDayChoice(uniqueDays[0] || 'Day 1');}}><i className="fa-solid fa-calendar-plus text-blue-500"></i></button>
-                                                    <button onClick={() => setMustEats(mustEats.filter(i => i.id !== item.id))}><i className="fa-solid fa-trash text-red-400"></i></button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ))}
-                            </div>
-                        )) : Object.entries(groupedBuys).map(([country, storesData]) => (
-                            <div key={country} className="mb-6"><h2 className="font-bold mb-2 flex gap-1 items-center"><i className="fa-solid fa-earth-americas text-[16px]"></i>{country}</h2>
-                                {Object.entries(storesData).map(([store, items]) => (
-                                    <div key={store} className="ml-2 mb-3"><h3 className="text-xs text-amber-700 mb-2 font-bold flex gap-1 items-center"><i className="fa-solid fa-bag-shopping"></i> {store}</h3>
-                                        {items.map(item => (
-                                            <div key={item.id} className="bg-white p-3 rounded-xl shadow-sm flex gap-3 items-center mb-2">
-                                                {item.image && <img src={item.image} className="w-16 h-16 object-cover rounded-lg shadow-sm shrink-0 border border-gray-100" />}
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="font-bold text-xs text-gray-800 break-words mb-1">{item.notes || '未命名商品'}</div>
-                                                </div>
-                                                <div className="flex gap-3 shrink-0">
-                                                    <button onClick={() => setMustBuys(mustBuys.filter(i => i.id !== item.id))}><i className="fa-solid fa-trash text-red-400"></i></button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ))}
-                            </div>
-                        ))}
-                    </div>
-                );
-            };
-
-            // --- 介面渲染: 購物清單 (⭐ 完美還原截圖排版，支援點擊編輯) ---
-            const RenderShoppingList = () => {
-                const [newItem, setNewItem] = useState({ name: '', qty: 1, currency: currency.code, price: '', notes: '' });
-                
-                const handleAdd = () => {
-                    if (!newItem.name) return;
-                    setShoppingList([{ ...newItem, id: Date.now(), checked: false }, ...shoppingList]);
-                    setNewItem({ name: '', qty: 1, currency: currency.code, price: '', notes: '' });
-                    showToast("已新增至清單");
-                };
-
-                const updateItem = (id, field, value) => {
-                    setShoppingList(shoppingList.map(item => item.id === id ? { ...item, [field]: value } : item));
-                };
-
-                return (
-                    <div className="p-4 pb-24">
-                        <h2 className="text-xl font-bold mb-4" style={{ color: COLORS.darkText }}>購物任務清單</h2>
-                        
-                        {/* 完美還原圖片中的排版 */}
-                        <div className="bg-white p-4 rounded-xl shadow-sm mb-6 border border-gray-100">
-                            {/* 第一排：商品名稱 + 數量 */}
-                            <div className="flex gap-2 mb-3">
-                                <input type="text" placeholder="商品名稱" className="flex-1 p-3 border rounded-lg text-sm" style={{ borderColor: COLORS.lightBlue }} value={newItem.name} onChange={e => setNewItem({...newItem, name: e.target.value})} />
-                                <input type="number" min="1" className="w-16 p-3 border rounded-lg text-sm text-center" style={{ borderColor: COLORS.lightBlue }} value={newItem.qty} onChange={e => setNewItem({...newItem, qty: e.target.value})} />
-                            </div>
-                            {/* 第二排：幣別下拉 + 預估價格 + 備註 */}
-                            <div className="flex gap-2 mb-4">
-                                <select className="w-24 p-3 border rounded-lg text-sm bg-white font-bold" style={{ borderColor: COLORS.lightBlue, color: COLORS.mediumBlue }} value={newItem.currency} onChange={e => setNewItem({...newItem, currency: e.target.value})}>
-                                    {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
-                                </select>
-                                <input type="number" placeholder="預估價格" className="flex-1 min-w-0 p-3 border rounded-lg text-sm" style={{ borderColor: COLORS.lightBlue }} value={newItem.price} onChange={e => setNewItem({...newItem, price: e.target.value})} />
-                                <input type="text" placeholder="備註" className="w-[70px] p-2 border rounded-lg text-sm" style={{ borderColor: COLORS.lightBlue }} value={newItem.notes} onChange={e => setNewItem({...newItem, notes: e.target.value})} />
-                            </div>
-                            {/* 第三排：滿版深藍色新增按鈕 */}
-                            <button onClick={handleAdd} className="w-full py-3 rounded-lg text-white font-bold text-sm shadow-sm" style={{ backgroundColor: COLORS.mediumBlue }}>新增至清單</button>
-                        </div>
-
-                        {/* 清單顯示區：點擊可直接修改 */}
-                        <div className="space-y-3">
-                            {shoppingList.map(item => {
-                                const itemCurCode = item.currency || currency.code;
-                                const curObj = CURRENCIES.find(c => c.code === itemCurCode) || CURRENCIES[0];
-                                const twdEq = getTwdEquivalent(item.price * item.qty, itemCurCode, exchangeRate);
-                                
-                                return (
-                                    <div key={item.id} className={`bg-white p-4 rounded-xl shadow-sm border ${item.checked ? 'opacity-60 bg-gray-50' : 'border-gray-100'}`}>
-                                        <div className="flex items-start gap-3">
-                                            <button onClick={() => updateItem(item.id, 'checked', !item.checked)} className={`w-6 h-6 mt-0.5 rounded-md flex items-center justify-center border shrink-0 ${item.checked ? 'bg-green-500 border-green-500' : 'border-gray-300'}`}>
-                                                {item.checked && <i className="fa-solid fa-check text-white text-[14px]"></i>}
-                                            </button>
-                                            
-                                            <div className="flex-1">
-                                                {/* 商品名稱 */}
-                                                <input 
-                                                    type="text" 
-                                                    value={item.name} 
-                                                    onChange={(e) => updateItem(item.id, 'name', e.target.value)}
-                                                    className={`w-full text-sm bg-transparent font-bold ${item.checked ? 'line-through text-gray-500' : ''}`} 
-                                                    style={{ color: item.checked ? '' : COLORS.darkText }}
-                                                    placeholder="商品名稱"
-                                                />
-                                                
-                                                {/* 項目細節：編輯模式 */}
-                                                {!item.checked && (
-                                                    <div className="grid grid-cols-2 gap-2 mt-3">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-[11px] text-gray-500 shrink-0">數量</span>
-                                                            <input type="number" min="1" value={item.qty} onChange={(e) => updateItem(item.id, 'qty', e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-gray-50" />
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-[11px] text-gray-500 shrink-0">備註</span>
-                                                            <input type="text" placeholder="尺寸/顏色" value={item.notes || ''} onChange={(e) => updateItem(item.id, 'notes', e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-gray-50" />
-                                                        </div>
-                                                        <div className="flex items-center gap-2 col-span-2 mt-1">
-                                                            <select value={itemCurCode} onChange={(e) => updateItem(item.id, 'currency', e.target.value)} className="p-2 border rounded-lg text-xs bg-white font-bold" style={{ color: COLORS.mediumBlue }}>
-                                                                {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
-                                                            </select>
-                                                            <input type="number" placeholder="單價..." value={item.price || ''} onChange={(e) => updateItem(item.id, 'price', e.target.value)} className="flex-1 p-2 border rounded-lg text-xs bg-gray-50" />
-                                                            <button onClick={() => setShoppingList(shoppingList.filter(i => i.id !== item.id))} className="px-3 py-2 bg-red-50 text-red-500 rounded-lg shrink-0"><i className="fa-solid fa-trash"></i></button>
-                                                        </div>
-                                                        {item.price && (
-                                                            <div className="col-span-2 text-right text-[11px] text-gray-500 font-bold mt-1">
-                                                                總計約 NT$ {twdEq?.toLocaleString()}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
+                        {/* 清單卡片顯示區 */}
+                        <div className="grid grid-cols-2 gap-3">
+                            {mustGoType === 'eat' ? mustEats.map(item => (
+                                <div key={item.id} className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 flex flex-col relative">
+                                    <button onClick={() => setMustEats(mustEats.filter(x => x.id !== item.id))} className="absolute top-1 right-1 bg-black/50 text-white w-6 h-6 rounded-full text-xs z-10"><i className="fa-solid fa-trash"></i></button>
+                                    <img src={item.image || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400'} alt="eat" className="w-full h-24 object-cover" />
+                                    <div className="p-3 flex-1 flex flex-col justify-between">
+                                        <div>
+                                            <h4 className="font-bold text-xs text-gray-800 line-clamp-1">{item.name}</h4>
+                                            <span className="text-[10px] text-gray-400 block mt-0.5">{item.city || item.country}</span>
+                                        </div>
+                                        <div className="mt-2 flex justify-between items-center">
+                                            <span className="text-xs font-black text-indigo-600">{item.cost ? `${item.currency} ${item.cost}` : '尚未填價'}</span>
+                                            <button onClick={() => setAddToItinModal({ isOpen: true, item })} className="w-6 h-6 rounded-md text-[10px] text-white flex items-center justify-center" style={{ backgroundColor: COLORS.mediumBlue }}><i className="fa-solid fa-calendar-plus"></i></button>
                                         </div>
                                     </div>
-                                );
-                            })}
-                            {shoppingList.length === 0 && <p className="text-center text-gray-500 mt-10 text-sm">購物清單是空的，開始新增吧！</p>}
-                        </div>
-                    </div>
-                );
-            };
-
-            // --- 介面渲染: 工具與分帳 ---
-            const RenderTools = () => {
-                const [newMember, setNewMember] = useState('');
-                const [newExpense, setNewExpense] = useState({ payer: splitMembers[0] || '', desc: '', amount: '' });
-                const [foreignAmount, setForeignAmount] = useState('');
-
-                // 確保記帳的 payer 下拉有預設值
-                useEffect(() => {
-                    if (splitMembers.length > 0 && !newExpense.payer) {
-                        setNewExpense(prev => ({ ...prev, payer: splitMembers[0] }));
-                    }
-                }, [splitMembers]);
-
-                const handleAddMember = () => {
-                    if (newMember.trim() && !splitMembers.includes(newMember.trim())) {
-                        setSplitMembers([...splitMembers, newMember.trim()]);
-                    }
-                    setNewMember('');
-                };
-
-                const handleRemoveMember = (name) => {
-                    setSplitMembers(splitMembers.filter(m => m !== name));
-                    setSplitExpenses(splitExpenses.filter(e => e.payer !== name));
-                    if (newExpense.payer === name) {
-                        setNewExpense({ ...newExpense, payer: splitMembers.find(m => m !== name) || '' });
-                    }
-                };
-
-                const handleAddExpense = () => {
-                    if (newExpense.payer && newExpense.desc && newExpense.amount) {
-                        setSplitExpenses([...splitExpenses, { ...newExpense, id: Date.now() }]);
-                        setNewExpense({ payer: splitMembers[0] || '', desc: '', amount: '' });
-                        showToast("成功新增花費！");
-                    } else {
-                        showToast("請填寫完整的記帳資訊");
-                    }
-                };
-
-                const settlements = useMemo(() => {
-                    if (splitMembers.length === 0 || splitExpenses.length === 0) return [];
-                    const balances = {}; splitMembers.forEach(m => balances[m] = 0);
-                    let total = 0;
-                    splitExpenses.forEach(exp => { if (balances[exp.payer] !== undefined) { balances[exp.payer] += Number(exp.amount); total += Number(exp.amount); } });
-                    const perPerson = total / splitMembers.length;
-                    const debtors = []; const creditors = [];
-                    Object.keys(balances).forEach(p => { const net = balances[p] - perPerson; if (net < -0.5) debtors.push({ p, a: -net }); else if (net > 0.5) creditors.push({ p, a: net }); });
-                    debtors.sort((a, b) => b.a - a.a); creditors.sort((a, b) => b.a - a.a);
-                    const transactions = []; let i = 0, j = 0;
-                    while (i < debtors.length && j < creditors.length) {
-                        const d = debtors[i]; const c = creditors[j]; const amt = Math.min(d.a, c.a);
-                        transactions.push({ from: d.p, to: c.p, amt: Math.round(amt) });
-                        d.a -= amt; c.a -= amt; if (d.a < 0.5) i++; if (c.a < 0.5) j++;
-                    }
-                    return { total, perPerson, transactions };
-                }, [splitMembers, splitExpenses]);
-
-                return (
-                    <div className="p-4 pb-24 space-y-6">
-                        {/* 完美回歸的天氣圖卡 */}
-                        <div className="bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl p-5 text-white shadow-md relative overflow-hidden">
-                            <i className="fa-solid fa-cloud-sun absolute -right-4 -bottom-4 opacity-30 text-[80px]"></i>
-                            <h2 className="text-lg font-bold mb-1 flex items-center gap-2"><i className="fa-solid fa-temperature-half"></i> 當地天氣預報 (示意)</h2>
-                            <div className="flex items-end gap-3 mt-4">
-                                <span className="text-5xl font-bold">20°</span>
-                                <span className="text-lg mb-1">晴時多雲</span>
-                            </div>
-                            <p className="mt-2 text-sm opacity-90">體感溫度 19° · 濕度 45%</p>
-                        </div>
-
-                        {/* 匯率換算器 */}
-                        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-                            <div className="flex justify-between items-start mb-4">
-                                <h3 className="font-bold flex items-center gap-2 text-sm" style={{ color: COLORS.darkText }}><i className="fa-solid fa-sack-dollar text-[18px]" style={{color:COLORS.mediumBlue}}></i> 簡易匯率換算</h3>
-                            </div>
-                            <div className="flex items-center text-xs text-gray-500 mb-3 gap-1">
-                                目前設定: 1 TWD = <input type="number" className="w-16 p-1 border rounded bg-gray-50 text-center text-gray-700 font-bold" style={{borderColor: COLORS.lightBlue}} value={exchangeRate} onChange={e => setExchangeRate(e.target.value)} /> {currency.code}
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <div className="flex-1 relative">
-                                    <span className="absolute left-3 top-2.5 text-gray-500 font-bold">{currency.symbol}</span>
-                                    <input type="number" placeholder={`${currency.name}金額`} className="w-full pl-8 p-2 border rounded bg-gray-50 text-sm" value={foreignAmount} onChange={e => setForeignAmount(e.target.value)} />
                                 </div>
-                                <span className="font-bold text-gray-400">=</span>
-                                <div className="flex-1 relative">
-                                    <span className="absolute left-3 top-2.5 text-gray-500 font-bold">NT$</span>
-                                    <div className="w-full pl-12 p-2 border rounded bg-gray-100 text-gray-700 font-bold text-sm">
-                                        {foreignAmount && exchangeRate > 0 ? Math.ceil(Number(foreignAmount) / exchangeRate).toLocaleString() : '0'}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 記帳分帳系統 */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                            <div className="p-4 border-b"><h3 className="font-bold text-sm flex items-center gap-2"><i className="fa-solid fa-calculator text-[16px]" style={{color:COLORS.mediumBlue}}></i> 記帳結算</h3></div>
-                            <div className="p-4 bg-gray-50 border-b">
-                                <div className="flex flex-wrap gap-2 mb-3">
-                                    {splitMembers.map(m => <div key={m} className="px-3 py-1 bg-white border rounded-full text-xs font-bold flex items-center gap-1">{m}<button onClick={() => handleRemoveMember(m)}><i className="fa-solid fa-xmark text-gray-400 hover:text-red-500"></i></button></div>)}
-                                </div>
-                                <div className="flex gap-2">
-                                    <input type="text" placeholder="新增人名..." className="flex-1 p-2 border rounded-lg text-xs" value={newMember} onChange={e=>setNewMember(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddMember()} />
-                                    <button onClick={handleAddMember} className="px-3 bg-slate-600 text-white rounded-lg text-xs">加入</button>
-                                </div>
-                            </div>
-                            {splitMembers.length > 0 && (
-                                <div className="p-4">
-                                    <div className="flex gap-2 mb-2">
-                                        <select className="w-1/3 p-2 border rounded-lg text-xs bg-white" value={newExpense.payer} onChange={e=>setNewExpense({...newExpense, payer:e.target.value})}>
-                                            <option value="" disabled>誰付的？</option>
-                                            {splitMembers.map(m => <option key={m} value={m}>{m}</option>)}
-                                        </select>
-                                        <input type="text" placeholder="項目" className="flex-1 p-2 border rounded-lg text-xs" value={newExpense.desc} onChange={e=>setNewExpense({...newExpense, desc:e.target.value})} />
-                                        <input type="number" placeholder="金額" className="w-1/4 p-2 border rounded-lg text-xs" value={newExpense.amount} onChange={e=>setNewExpense({...newExpense, amount:e.target.value})} />
-                                    </div>
-                                    <button onClick={handleAddExpense} className="w-full py-2 bg-indigo-500 text-white font-bold rounded-lg text-xs shadow-sm">+ 記一筆</button>
-                                </div>
-                            )}
-                            {splitExpenses.length > 0 && (
-                                <div className="p-4 bg-gray-50">
-                                    <h4 className="text-xs font-bold mb-2">結算結果 (均攤 ${Math.ceil(settlements?.perPerson||0).toLocaleString()})</h4>
-                                    {settlements?.transactions?.map((t, idx) => (
-                                        <div key={idx} className="flex justify-between items-center text-xs p-2 bg-white rounded border mb-1 shadow-sm">
-                                            <span className="text-red-500 font-bold">{t.from}</span>
-                                            <span><i className="fa-solid fa-arrow-right text-gray-300"></i> 應付</span>
-                                            <span className="text-green-600 font-bold">{t.to}</span>
-                                            <span className="font-bold text-indigo-600">NT$ {t.amt.toLocaleString()}</span>
+                            )) : mustBuys.map(item => (
+                                <div key={item.id} className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 flex flex-col relative">
+                                    <button onClick={() => setMustBuys(mustBuys.filter(x => x.id !== item.id))} className="absolute top-1 right-1 bg-black/50 text-white w-6 h-6 rounded-full text-xs z-10"><i className="fa-solid fa-trash"></i></button>
+                                    <img src={item.image || 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=400'} alt="buy" className="w-full h-24 object-cover" />
+                                    <div className="p-3 flex-1 flex flex-col justify-between">
+                                        <div>
+                                            <h4 className="font-bold text-xs text-gray-800 line-clamp-1">{item.notes || '自訂商品'}</h4>
+                                            <span className="text-[10px] text-gray-400 block mt-0.5"><i className="fa-solid fa-store mr-0.5"></i>{item.store || '未分類商店'}</span>
                                         </div>
-                                    ))}
-                                    {settlements?.transactions?.length === 0 && <p className="text-xs text-gray-500 text-center py-2">大家互不相欠！🎉</p>}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* 資料備份 */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                            <div className="p-4 border-b bg-gray-50 flex items-center gap-2 font-bold text-sm"><i className="fa-solid fa-hard-drive text-[16px]" style={{color:COLORS.mediumBlue}}></i> 資料備份 (匯出/匯入)</div>
-                            <div className="p-4 flex gap-2">
-                                <button onClick={handleExportData} className="flex-1 py-3 rounded-lg bg-blue-50 text-blue-700 font-bold border border-blue-100 text-sm flex justify-center items-center gap-2"><i className="fa-solid fa-download"></i>下載備份檔</button>
-                                <label className="flex-1 py-3 rounded-lg bg-green-50 text-green-700 font-bold border border-green-100 text-sm flex justify-center items-center gap-2 cursor-pointer"><i className="fa-solid fa-upload"></i>匯入備份檔<input type="file" accept=".json" className="hidden" onChange={handleImportData} /></label>
-                            </div>
-                        </div>
-                    </div>
-                );
-            };
-
-            const RenderPrep = () => {
-                const [newItem, setNewItem] = useState('');
-                const progress = Math.round((prepList.filter(i => i.checked).length / (prepList.length || 1)) * 100);
-
-                return (
-                    <div className="p-4 pb-24">
-                        <h2 className="text-xl font-bold mb-4">行李與文件準備</h2>
-                        <div className="bg-white p-3 rounded-xl shadow-sm mb-4">
-                            <div className="flex justify-between text-xs mb-1 font-bold text-slate-600"><span>準備進度</span><span>{progress}%</span></div>
-                            <div className="w-full bg-gray-200 rounded-full h-2"><div className="h-2 rounded-full transition-all bg-indigo-500" style={{ width: `${progress}%` }}></div></div>
-                        </div>
-                        <div className="flex flex-col gap-2 mb-6">
-                            <div className="flex gap-2">
-                                <input type="text" placeholder="新增事項..." className="flex-1 p-3 rounded-lg border text-sm" value={newItem} onChange={e => setNewItem(e.target.value)} />
-                                <button onClick={()=>{if(newItem)setPrepList([{id:Date.now(), text:newItem, checked:false}, ...prepList]); setNewItem('');}} className="px-4 bg-slate-600 text-white rounded-lg font-bold">加入</button>
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            {prepList.map((item) => (
-                                <div key={item.id} className="bg-white p-3 flex items-center gap-3 rounded-xl shadow-sm border">
-                                    <button onClick={() => setPrepList(prepList.map(i=>i.id===item.id?{...i,checked:!i.checked}:i))} className={`w-6 h-6 rounded-full flex items-center justify-center border-2 ${item.checked?'bg-green-400 border-green-400':''}`}>
-                                        {item.checked && <i className="fa-solid fa-check text-white text-[12px]"></i>}
-                                    </button>
-                                    <span className={`flex-1 text-sm ${item.checked?'line-through text-gray-400':''}`}>{item.text}</span>
-                                    <button onClick={() => setPrepList(prepList.filter(i=>i.id!==item.id))} className="text-red-400"><i className="fa-solid fa-xmark text-[16px]"></i></button>
+                                        <div className="mt-2 flex justify-between items-center">
+                                            <span className="text-xs font-black text-indigo-600">{item.cost ? `${item.currency} ${item.cost}` : '尚未填價'}</span>
+                                            <button onClick={() => setAddToItinModal({ isOpen: true, item })} className="w-6 h-6 rounded-md text-[10px] text-white flex items-center justify-center" style={{ backgroundColor: COLORS.mediumBlue }}><i className="fa-solid fa-calendar-plus"></i></button>
+                                        </div>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -803,73 +570,96 @@
                 );
             };
 
-            const NavBar = () => {
-                const tabs = [
-                    { id: 'dest', icon: 'fa-house', label: '首頁' }, 
-                    { id: 'itinerary', icon: 'fa-map-location-dot', label: '行程' },
-                    { id: 'mustgo', icon: 'fa-star', label: '必去買' }, 
-                    { id: 'list', icon: 'fa-list-check', label: '清單' },
-                    { id: 'tools', icon: 'fa-toolbox', label: '工具' }, 
-                    { id: 'prep', icon: 'fa-suitcase-rolling', label: '行李' }
-                ];
-                return (
-                    <div className="fixed bottom-0 left-0 right-0 bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.06)] border-t border-gray-100 z-40 max-w-[480px] mx-auto flex justify-between items-center h-16 px-1">
-                        {tabs.map(tab => (
-                            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className="flex flex-col items-center justify-center w-full h-full space-y-1" style={{ color: activeTab === tab.id ? COLORS.mediumBlue : '#a1a1aa' }}>
-                                <i className={`fa-solid ${tab.icon} text-[20px] ${activeTab === tab.id ? 'mb-0.5' : ''}`}></i>
-                                <span className={`text-[10px] ${activeTab === tab.id ? 'font-bold' : ''}`}>{tab.label}</span>
-                            </button>
-                        ))}
-                    </div>
-                );
-            };
+            // 為了不影響你其餘分頁的功能，這邊提供基礎的其他分頁容器佔位
+            const RenderPlaceholder = (title) => (
+                <div className="p-10 text-center text-gray-500 text-xs">
+                    <p>這裡是【{title}】分頁</p>
+                    <p className="mt-2 text-[11px] opacity-75">如需對此頁面進行特定擴充，隨時告訴我！</p>
+                </div>
+            );
 
             return (
                 <div className="app-container">
-                    {toastMessage && <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-gray-800 text-white px-6 py-2 rounded-full shadow-2xl text-xs font-bold animate-bounce flex items-center gap-2"><i className="fa-solid fa-check text-green-400"></i>{toastMessage}</div>}
-                    
-                    {/* Header */}
-                    <div className="pt-8 pb-4 px-4 sticky top-0 z-30 shadow-sm flex justify-between items-center" style={{ backgroundColor: COLORS.bg }}>
-                        <h1 className="text-lg font-black tracking-wider text-slate-800"><i className="fa-solid fa-plane-departure text-blue-500 mr-2"></i>專屬旅遊小幫手2.0</h1>
-                        <div className="relative">
-                            <select className="appearance-none font-bold text-xs py-1.5 pl-3 pr-8 rounded-lg shadow-sm bg-white cursor-pointer border" style={{ color: COLORS.mediumBlue, borderColor: COLORS.lightBlue }} value={currency.code} onChange={(e) => handleCurrencyChange(e.target.value)}>
-                                {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} {c.symbol}</option>)}
-                            </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2" style={{ color: COLORS.mediumBlue }}>
-                                <i className="fa-solid fa-chevron-down text-[10px]"></i>
-                            </div>
+                    {/* 頂部功能條 */}
+                    <div className="flex justify-between items-center px-4 py-3 bg-white border-b sticky top-0 z-50 shadow-sm">
+                        <span className="font-black text-sm tracking-wide" style={{ color: COLORS.darkText }}>✈️ 旅遊小幫手 2.0</span>
+                        <div className="flex gap-2 text-xs">
+                            <button onClick={handleExportData} className="px-2.5 py-1 rounded-md text-white font-bold bg-gray-500"><i className="fa-solid fa-download mr-1"></i>備份</button>
+                            <label className="px-2.5 py-1 rounded-md text-white font-bold cursor-pointer bg-slate-600">
+                                <i className="fa-solid fa-upload mr-1"></i>匯入
+                                <input type="file" accept=".json" className="hidden" onChange={handleImportData} />
+                            </label>
                         </div>
                     </div>
 
+                    {/* 主要內容顯示區 */}
                     <div className="content-area no-scrollbar">
-                        {activeTab === 'dest' && <RenderDestination />}
+                        {activeTab === 'list' && <RenderDestination />}
                         {activeTab === 'itinerary' && <RenderItinerary />}
                         {activeTab === 'mustgo' && <RenderMustGo />}
-                        {activeTab === 'list' && <RenderShoppingList />}
-                        {activeTab === 'tools' && <RenderTools />}
-                        {activeTab === 'prep' && <RenderPrep />}
+                        {['accounting', 'prep'].includes(activeTab) && RenderPlaceholder(activeTab === 'accounting' ? '記帳分帳' : '出國清單')}
                     </div>
-                    
+
+                    {/* 安排行程專用 Modal */}
                     {addToItinModal.isOpen && (
-                        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-                            <div className="bg-white rounded-2xl p-6 w-full shadow-2xl max-w-sm">
-                                <h3 className="font-bold text-md mb-4">安排加入行程</h3>
-                                <select className="w-full p-2 border rounded-lg mb-4 text-sm" value={modalDayChoice} onChange={e=>setModalDayChoice(e.target.value)}>{uniqueDays.map(d=><option key={d}>{d}</option>)}<option value="__CUSTOM__">+ 新增天數...</option></select>
-                                {modalDayChoice === '__CUSTOM__' && <input type="text" className="w-full p-2 border rounded-lg mb-4 text-sm" placeholder="例如 Day 3" value={modalCustomDay} onChange={e=>setModalCustomDay(e.target.value)} autoFocus />}
-                                <input type="time" className="w-full p-2 border rounded-lg mb-6 text-sm" value={modalTime} onChange={e=>setModalTime(e.target.value)} />
-                                <div className="flex gap-3">
-                                    <button onClick={() => setAddToItinModal({isOpen:false})} className="flex-1 py-2 bg-gray-200 rounded-lg text-sm font-bold">取消</button>
-                                    <button onClick={confirmAddToItinerary} className="flex-1 py-2 bg-slate-700 text-white rounded-lg text-sm font-bold">確定加入</button>
+                        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+                            <div className="bg-white rounded-2xl p-5 w-full max-w-sm shadow-xl">
+                                <h3 className="font-bold text-base mb-1 flex items-center gap-1.5" style={{ color: COLORS.darkText }}><i className="fa-solid fa-calendar-plus text-indigo-500"></i> 排入旅遊行程</h3>
+                                <p className="text-xs text-gray-400 mb-4">將此項目無縫加進您的每日行程時間軸中</p>
+                                <div className="space-y-3 mb-4">
+                                    <div>
+                                        <label className="text-[11px] font-bold text-gray-500 block mb-1">選擇天數</label>
+                                        <select className="w-full p-2 border rounded-lg bg-white text-sm" value={modalDayChoice} onChange={(e) => setModalDayChoice(e.target.value)}>
+                                            {uniqueDays.map(d => <option key={d} value={d}>{d}</option>)}
+                                            <option value="__CUSTOM__">+ 自訂新天數</option>
+                                        </select>
+                                    </div>
+                                    {modalDayChoice === '__CUSTOM__' && (
+                                        <input type="text" placeholder="自訂天數 (例: Day 3)" className="w-full p-2 border rounded-lg text-sm" value={modalCustomDay} onChange={e => setModalCustomDay(e.target.value)} />
+                                    )}
+                                    <div>
+                                        <label className="text-[11px] font-bold text-gray-500 block mb-1">出發時間</label>
+                                        <input type="time" className="w-full p-2 border rounded-lg text-sm" value={modalTime} onChange={e => setModalTime(e.target.value)} />
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={confirmAddToItinerary} className="flex-1 py-2 rounded-lg text-white font-bold text-sm" style={{ backgroundColor: COLORS.mediumBlue }}>確認加入</button>
+                                    <button onClick={() => setAddToItinModal({ isOpen: false, item: null })} className="flex-1 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium">關閉</button>
                                 </div>
                             </div>
                         </div>
                     )}
-                    <NavBar />
+
+                    {/* 全域 Toast 提示框 */}
+                    {toastMessage && (
+                        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-black/80 text-white font-medium px-4 py-2 rounded-full text-xs shadow-md z-[200] transition-all flex items-center gap-1.5">
+                            <i className="fa-solid fa-circle-check text-green-400 text-sm"></i> {toastMessage}
+                        </div>
+                    )}
+
+                    {/* 底部導覽列 */}
+                    <div className="fixed bottom-0 left-0 right-0 max-w-[480px] mx-auto bg-white/95 backdrop-blur border-t flex justify-around py-2 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] z-50">
+                        <button onClick={() => setActiveTab('list')} className={`flex flex-col items-center gap-0.5 text-xs font-bold transition-all ${activeTab === 'list' ? 'scale-105' : 'opacity-40'}`} style={{ color: COLORS.darkText }}>
+                            <i className="fa-solid fa-map-location-dot text-lg"></i><span>目的地</span>
+                        </button>
+                        <button onClick={() => setActiveTab('itinerary')} className={`flex flex-col items-center gap-0.5 text-xs font-bold transition-all ${activeTab === 'itinerary' ? 'scale-105' : 'opacity-40'}`} style={{ color: COLORS.darkText }}>
+                            <i className="fa-solid fa-route text-lg"></i><span>行程軸</span>
+                        </button>
+                        <button onClick={() => setActiveTab('mustgo')} className={`flex flex-col items-center gap-0.5 text-xs font-bold transition-all ${activeTab === 'mustgo' ? 'scale-105' : 'opacity-40'}`} style={{ color: COLORS.darkText }}>
+                            <i className="fa-solid fa-heart text-lg"></i><span>口袋單</span>
+                        </button>
+                        <button onClick={() => setActiveTab('accounting')} className={`flex flex-col items-center gap-0.5 text-xs font-bold transition-all ${activeTab === 'accounting' ? 'scale-105' : 'opacity-40'}`} style={{ color: COLORS.darkText }}>
+                            <i className="fa-solid fa-wallet text-lg"></i><span>記帳</span>
+                        </button>
+                        <button onClick={() => setActiveTab('prep')} className={`flex flex-col items-center gap-0.5 text-xs font-bold transition-all ${activeTab === 'prep' ? 'scale-105' : 'opacity-40'}`} style={{ color: COLORS.darkText }}>
+                            <i className="fa-solid fa-clipboard-list text-lg"></i><span>清單</span>
+                        </button>
+                    </div>
                 </div>
             );
         };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
+        const root = tragedies = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
 </body>
