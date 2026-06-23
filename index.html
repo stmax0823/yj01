@@ -699,20 +699,27 @@ useEffect(() => {
                         <div className="bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl p-5 text-white shadow-md relative overflow-hidden">
                             <i className="fa-solid fa-cloud-sun absolute -right-4 -bottom-4 opacity-30 text-[80px]"></i>
                             <h2 className="text-lg font-bold mb-1 flex items-center gap-2"><i className="fa-solid fa-temperature-half"></i> 當地天氣預報 </h2>
-                            <div className="flex items-end gap-3 mt-4">
-                <span className="text-5xl font-bold">
-    {weather ? weather.current_condition[0].temp_C : '--'}°
-</span>
+                        
+               <div className="flex items-end gap-3 mt-4">
 
-<span className="text-lg mb-1">
-    {weather ? weather.current_condition[0].weatherDesc[0].value : '載入中'}
-</span>
+    <span className="text-5xl font-bold">
+        {weather ? weather.current_condition[0].temp_C : '--'}°
+    </span>
 
+    <span className="text-lg mb-1">
+    
+        {weather ? weather.current_condition[0].weatherDesc[0].value : '載入中'}
+    </span>
+
+</div>   {/* ← 加在這裡 */}
+</p>
 <p className="mt-2 text-sm opacity-90">
     {weather
         ? `體感溫度 ${weather.current_condition[0].FeelsLikeC}° ・ 濕度 ${weather.current_condition[0].humidity}%`
         : '讀取中...'}
 </p>
+
+</div>   {/* ← 天氣卡片結束 */}
 
 
                         {/* 匯率換算器 */}
