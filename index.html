@@ -15,7 +15,7 @@
 
     <style>
         body { margin: 0; padding: 0; background-color: #F0ECDD; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent;}
-        .app-container { max-width: 480px; margin: 0 auto; background-color: #F0ECDD; min-height: 100vh; position: relative; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; }
+        .app-container { max-w: 480px; margin: 0 auto; background-color: #F0ECDD; min-height: 100vh; position: relative; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; }
         .content-area { flex: 1; overflow-y: auto; padding-bottom: 80px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -129,7 +129,7 @@
             const [toastMessage, setToastMessage] = useState('');
             const showToast = (message) => { setToastMessage(message); setTimeout(() => setToastMessage(''), 2500); };
 
-            // 💾 狀態初始化 (嚴格鎖定 LocalStorage，並加上版號避免與舊資料衝突)
+            // 💾 狀態初始化
             const [destinations, setDestinations] = useState(() => JSON.parse(localStorage.getItem('app_destinations_v6')) || INITIAL_DESTINATIONS);
             const [currentTrip, setCurrentTrip] = useState(() => JSON.parse(localStorage.getItem('app_current_trip_v6')) || { country: '韓國', city: '首爾' });
             const [currency, setCurrency] = useState(() => JSON.parse(localStorage.getItem('app_currency_v6')) || CURRENCIES[0]);
@@ -149,7 +149,7 @@
             // 天氣狀態
             const [weatherData, setWeatherData] = useState({ temp: '--', text: '點擊載入天氣', icon: '' });
 
-            // 🌍 即時匯率 API 串接更新
+            // 🌍 即時匯率 API
             useEffect(() => {
                 if (currency.code === 'TWD') {
                     setExchangeRate(1);
@@ -169,7 +169,7 @@
                     });
             }, [currency]);
 
-            // 🌦️ 即時天氣 API 串接更新
+            // 🌦️ 即時天氣 API
             const fetchWeather = (cityName) => {
                 if (!cityName) return;
                 setWeatherData({ temp: '--', text: '載入中...', icon: '' });
@@ -197,7 +197,7 @@
                 }
             }, [currentTrip.city]);
 
-            // 自動存檔機制
+            // 自動存檔
             useEffect(() => {
                 localStorage.setItem('app_destinations_v6', JSON.stringify(destinations));
                 localStorage.setItem('app_current_trip_v6', JSON.stringify(currentTrip));
@@ -283,10 +283,6 @@
                 event.target.value = null; 
             };
 
-            // ==========================================
-            // 各頁面渲染元件
-            // ==========================================
-
             // --- 介面渲染: 目的地 ---
             const RenderDestination = () => (
                 <div className="p-4 pb-24 space-y-6">
@@ -343,7 +339,6 @@
                     setEditingId(null); setEditItem(null); showToast("修改完成！");
                 };
 
-                // 將行程依據日期分組
                 const groupedItinerary = useMemo(() => {
                     return itinerary.reduce((acc, curr) => {
                         (acc[curr.day] = acc[curr.day] || []).push(curr);
@@ -601,11 +596,16 @@
                             <button onClick={handleAddItem} className="w-full py-2 rounded-lg text-white font-bold text-sm" style={{ backgroundColor: COLORS.mediumBlue }}>加入清單</button>
                         </div>
 
-                        <div className="bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-xl p-4 shadow-md mb-4 flex justify-between items-center">
-                            <div><span className="text-xs block opacity-90">已選購商品總結計</span>
-                            <span className="text-xl font-black">{currency.symbol} {totals.foreign.toLocaleString()}</span></div>
-                            <div className="text-right"><span className="text-xs block opacity-90">預估折合台幣</span>
-                            <span className="text-2xl font-black">NT$ {totals.twd?.toLocaleString() || 0}</span></div>
+                        {/* 修改：已選購商品總結計色號改為 #F0ECDD，文字改為深色 darkText 以利平衡對比 */}
+                        <div className="text-white rounded-xl p-4 shadow-md mb-4 flex justify-between items-center border" style={{ backgroundColor: '#F0ECDD', borderColor: COLORS.lightBlue }}>
+                            <div>
+                                <span className="text-xs block font-bold" style={{ color: COLORS.darkText }}>已選購商品總結計</span>
+                                <span className="text-xl font-black" style={{ color: COLORS.darkText }}>{currency.symbol} {totals.foreign.toLocaleString()}</span>
+                            </div>
+                            <div className="text-right">
+                                <span className="text-xs block font-bold" style={{ color: COLORS.darkText }}>預估折合台幣</span>
+                                <span className="text-2xl font-black" style={{ color: COLORS.darkText }}>NT$ {totals.twd?.toLocaleString() || 0}</span>
+                            </div>
                         </div>
 
                         <div className="bg-white rounded-xl border shadow-sm divide-y">
@@ -646,7 +646,6 @@
                     setShares(initShares);
                 }, [splitMembers]);
 
-                // 匯率切換自動帶入
                 useEffect(() => {
                     if (selectedCurrency === 'TWD') { setCustomRate('1'); }
                     else if (selectedCurrency === currency.code) { setCustomRate(exchangeRate.toString()); }
@@ -701,7 +700,6 @@
                         editShares[m] = exp.mInvolved.includes(m);
                     });
                     setShares(editShares);
-                    showToast("已將資料帶回上方表單，修改後點擊儲存即可。");
                 };
 
                 const handleCancelEdit = () => {
@@ -711,7 +709,6 @@
                     setIsCustomRate(false);
                 };
 
-                // 核心計算公式
                 const splitResults = useMemo(() => {
                     const balances = {};
                     let totalTwd = 0;
@@ -761,8 +758,8 @@
                             </div>
                         </div>
 
-                        {/* 修改：頂部整合看板的色彩套用您的要求 */}
-                        <div className="rounded-xl border shadow-md overflow-hidden grid grid-cols-2 text-center" style={{ backgroundColor: '#795B7D' }}>
+                        {/* 修改：目前總花費計色號修改為 #23354D，每人平均應付保留原精緻風格底色 #8BA3C5 */}
+                        <div className="rounded-xl border shadow-md overflow-hidden grid grid-cols-2 text-center" style={{ backgroundColor: '#23354D' }}>
                             <div className="p-4 border-r border-white/20">
                                 <span className="text-xs block text-white font-bold mb-1">目前總花費計</span>
                                 <span className="text-2xl font-black text-white">NT$ {splitResults.totalTwd.toLocaleString()}</span>
@@ -855,7 +852,6 @@
                                             <span className="text-sm font-black text-slate-800">NT$ {exp.twdAmount}</span>
                                         </div>
                                         <div className="flex gap-2">
-                                            {/* 新增編輯按鈕 */}
                                             <button onClick={() => handleEditExpense(exp)} className="text-gray-400 hover:text-blue-500 transition-colors p-1" title="編輯項目">
                                                 <i className="fa-solid fa-pen text-[14px]"></i>
                                             </button>
@@ -931,7 +927,6 @@
 
             return (
                 <div className="app-container">
-                    {/* 頂部導覽列 */}
                     <header className="p-4 border-b flex justify-between items-center bg-white shadow-sm sticky top-0 z-40">
                         <div className="flex items-center gap-2">
                             <span className="text-2xl">✈️</span>
@@ -948,7 +943,6 @@
                         </div>
                     </header>
 
-                    {/* 主要內容顯示區 */}
                     <main className="content-area no-scrollbar">
                         {activeTab === 'dest' && <RenderDestination />}
                         {activeTab === 'list' && <RenderItinerary />}
@@ -959,14 +953,12 @@
                         {activeTab === 'back' && <RenderBackup />}
                     </main>
 
-                    {/* 精緻動態浮動 Toast 提示 */}
                     {toastMessage && (
                         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white font-medium text-xs px-4 py-2.5 rounded-xl shadow-xl z-50 backdrop-blur-sm border border-white/10 flex items-center gap-2 transition-all duration-300 animate-bounce">
                             <i className="fa-solid fa-circle-info text-sky-400"></i> {toastMessage}
                         </div>
                     )}
 
-                    {/* 全域加入行程設定之浮動視窗 (Modal) */}
                     {addToItinModal.isOpen && (
                         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
                             <div className="bg-white w-full max-w-sm rounded-2xl p-5 shadow-2xl border animate-in fade-in zoom-in-95 duration-200">
@@ -999,7 +991,6 @@
                         </div>
                     )}
 
-                    {/* 底部導航欄 */}
                     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-xl max-w-[480px] margin-0-auto z-40 flex justify-around p-2.5">
                         <button onClick={() => setActiveTab('dest')} className={`flex flex-col items-center gap-1 text-[10px] font-bold transition-all ${activeTab === 'dest' ? 'scale-105' : 'opacity-50'}`} style={{ color: activeTab === 'dest' ? COLORS.mediumBlue : COLORS.darkText }}><i className="fa-solid fa-map text-base"></i>目的地</button>
                         <button onClick={() => setActiveTab('list')} className={`flex flex-col items-center gap-1 text-[10px] font-bold transition-all ${activeTab === 'list' ? 'scale-105' : 'opacity-50'}`} style={{ color: activeTab === 'list' ? COLORS.mediumBlue : COLORS.darkText }}><i className="fa-solid fa-route text-base"></i>行程表</button>
