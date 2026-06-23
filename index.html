@@ -558,8 +558,8 @@
                                 <select className="w-24 p-3 border rounded-lg text-sm bg-white font-bold" style={{ borderColor: COLORS.lightBlue, color: COLORS.mediumBlue }} value={newItem.currency} onChange={e => setNewItem({...newItem, currency: e.target.value})}>
                                     {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
                                 </select>
-                                <input type="number" placeholder="預估價格" className="flex-1 p-3 border rounded-lg text-sm" style={{ borderColor: COLORS.lightBlue }} value={newItem.price} onChange={e => setNewItem({...newItem, price: e.target.value})} />
-                                <input type="text" placeholder="備註" className="flex-1 p-2 border rounded-lg text-sm" style={{ borderColor: COLORS.lightBlue }} value={newItem.notes} onChange={e => setNewItem({...newItem, notes: e.target.value})} />
+                                <input type="number" placeholder="預估價格" className="flex-1 min-w-0 p-3 border rounded-lg text-sm" style={{ borderColor: COLORS.lightBlue }} value={newItem.price} onChange={e => setNewItem({...newItem, price: e.target.value})} />
+                                <input type="text" placeholder="備註" className="w-[70px] p-2 border rounded-lg text-sm" style={{ borderColor: COLORS.lightBlue }} value={newItem.notes} onChange={e => setNewItem({...newItem, notes: e.target.value})} />
                             </div>
                             {/* 第三排：滿版深藍色新增按鈕 */}
                             <button onClick={handleAdd} className="w-full py-3 rounded-lg text-white font-bold text-sm shadow-sm" style={{ backgroundColor: COLORS.mediumBlue }}>新增至清單</button>
