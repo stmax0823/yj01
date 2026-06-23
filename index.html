@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>✈️ 旅遊小幫手2.0</title>
     <meta name="apple-mobile-web-app-title" content="旅遊小幫手2.0">
-    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -129,7 +129,7 @@
             const [toastMessage, setToastMessage] = useState('');
             const showToast = (message) => { setToastMessage(message); setTimeout(() => setToastMessage(''), 2500); };
 
-            // 💾 狀態初始化
+            // 💾 狀態初始化 (嚴格鎖定 LocalStorage，並加上版號避免與舊資料衝突)
             const [destinations, setDestinations] = useState(() => JSON.parse(localStorage.getItem('app_destinations_v6')) || INITIAL_DESTINATIONS);
             const [currentTrip, setCurrentTrip] = useState(() => JSON.parse(localStorage.getItem('app_current_trip_v6')) || { country: '韓國', city: '首爾' });
             const [currency, setCurrency] = useState(() => JSON.parse(localStorage.getItem('app_currency_v6')) || CURRENCIES[0]);
@@ -149,7 +149,7 @@
             // 天氣狀態
             const [weatherData, setWeatherData] = useState({ temp: '--', text: '點擊載入天氣', icon: '' });
 
-            // 🌍 即時匯率 API
+            // 🌍 即時匯率 API 串接更新
             useEffect(() => {
                 if (currency.code === 'TWD') {
                     setExchangeRate(1);
@@ -169,7 +169,7 @@
                     });
             }, [currency]);
 
-            // 🌦️ 即時天氣 API
+            // 🌦️ 即時天氣 API 串接更新
             const fetchWeather = (cityName) => {
                 if (!cityName) return;
                 setWeatherData({ temp: '--', text: '載入中...', icon: '' });
@@ -197,7 +197,7 @@
                 }
             }, [currentTrip.city]);
 
-            // 自動存檔
+            // 自動存檔機制
             useEffect(() => {
                 localStorage.setItem('app_destinations_v6', JSON.stringify(destinations));
                 localStorage.setItem('app_current_trip_v6', JSON.stringify(currentTrip));
@@ -282,6 +282,10 @@
                 reader.readAsText(file);
                 event.target.value = null; 
             };
+
+            // ==========================================
+            // 各頁面渲染元件
+            // ==========================================
 
             // --- 介面渲染: 目的地 ---
             const RenderDestination = () => (
@@ -596,15 +600,15 @@
                             <button onClick={handleAddItem} className="w-full py-2 rounded-lg text-white font-bold text-sm" style={{ backgroundColor: COLORS.mediumBlue }}>加入清單</button>
                         </div>
 
-                        {/* 修改：已選購商品總結計色號改為 #F0ECDD，文字改為深色 darkText 以利平衡對比 */}
-                        <div className="text-white rounded-xl p-4 shadow-md mb-4 flex justify-between items-center border" style={{ backgroundColor: '#F0ECDD', borderColor: COLORS.lightBlue }}>
+                        {/* 已選購商品總結計：色號改為 #23354D，文字與金額改為白色呈現 */}
+                        <div className="text-white rounded-xl p-4 shadow-md mb-4 flex justify-between items-center border" style={{ backgroundColor: '#23354D', borderColor: '#23354D' }}>
                             <div>
-                                <span className="text-xs block font-bold" style={{ color: COLORS.darkText }}>已選購商品總結計</span>
-                                <span className="text-xl font-black" style={{ color: COLORS.darkText }}>{currency.symbol} {totals.foreign.toLocaleString()}</span>
+                                <span className="text-xs block font-bold text-white/80">已選購商品總結計</span>
+                                <span className="text-xl font-black text-white">{currency.symbol} {totals.foreign.toLocaleString()}</span>
                             </div>
                             <div className="text-right">
-                                <span className="text-xs block font-bold" style={{ color: COLORS.darkText }}>預估折合台幣</span>
-                                <span className="text-2xl font-black" style={{ color: COLORS.darkText }}>NT$ {totals.twd?.toLocaleString() || 0}</span>
+                                <span className="text-xs block font-bold text-white/80">預估折合台幣</span>
+                                <span className="text-2xl font-black text-white">NT$ {totals.twd?.toLocaleString() || 0}</span>
                             </div>
                         </div>
 
@@ -758,7 +762,7 @@
                             </div>
                         </div>
 
-                        {/* 修改：目前總花費計色號修改為 #23354D，每人平均應付保留原精緻風格底色 #8BA3C5 */}
+                        {/* 目前總花費計維持色號 #23354D，每人平均應付維持色號 #8BA3C5 */}
                         <div className="rounded-xl border shadow-md overflow-hidden grid grid-cols-2 text-center" style={{ backgroundColor: '#23354D' }}>
                             <div className="p-4 border-r border-white/20">
                                 <span className="text-xs block text-white font-bold mb-1">目前總花費計</span>
