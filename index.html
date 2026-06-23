@@ -681,6 +681,18 @@
                     }
                     return { total, perPerson, transactions };
                 }, [splitMembers, splitExpenses]);
+}, [splitMembers, splitExpenses]);
+
+const [weather, setWeather] = useState(null);
+
+useEffect(() => {
+    fetch(
+        "https://api.openweathermap.org/data/2.5/weather?q=Seoul&appid=39226bafe067567160226719183bd795&units=metric&lang=zh_tw"
+    )
+    .then(res => res.json())
+    .then(data => setWeather(data))
+    .catch(err => console.error(err));
+}, []);
 
                 return (
                     <div className="p-4 pb-24 space-y-6">
