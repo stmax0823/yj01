@@ -709,7 +709,9 @@ useEffect(() => {
 </span>
 
 <p className="mt-2 text-sm opacity-90">
-    {weather ? `體感溫度 ${weather.current_condition[0].FeelsLikeC}° ・ 濕度 ${weather.current_condition[0].humidity}%` : '讀取中...'}
+    {weather
+        ? `體感溫度 ${weather.current_condition[0].FeelsLikeC}° ・ 濕度 ${weather.current_condition[0].humidity}%`
+        : '讀取中...'}
 </p>
 
 
