@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>✈️ 旅遊小幫手2.0</title>
     <meta name="apple-mobile-web-app-title" content="旅遊小幫手2.0">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -15,7 +15,7 @@
 
     <style>
         body { margin: 0; padding: 0; background-color: #F0ECDD; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent;}
-        .app-container { max-w: 480px; margin: 0 auto; background-color: #F0ECDD; min-height: 100vh; position: relative; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; }
+        .app-container { max-width: 480px; margin: 0 auto; background-color: #F0ECDD; min-height: 100vh; position: relative; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; }
         .content-area { flex: 1; overflow-y: auto; padding-bottom: 80px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -118,7 +118,7 @@
                     <select className="p-2 rounded-lg border bg-white text-sm" style={{ color: COLORS.darkText }} value={value} onChange={(e) => { if (e.target.value === '__ADD_NEW__') setIsAdding(true); else onChange(e.target.value); }}>
                         <option value="" disabled>{placeholder}</option>
                         {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                        <option value="__ADD_NEW__" style={{ color: COLORS.mediumBlue, fontWeght: 'bold' }}>+ 手動輸入新選項</option>
+                        <option value="__ADD_NEW__" style={{ color: COLORS.mediumBlue, fontWeight: 'bold' }}>+ 手動輸入新選項</option>
                     </select>
                 </div>
             );
@@ -159,7 +159,6 @@
                     .then(res => res.json())
                     .then(data => {
                         if (data && data.rates && data.rates[currency.code]) {
-                            // 匯率公式：1 台幣 = X 外幣，轉換率即為此數據
                             const rate = data.rates[currency.code];
                             setExchangeRate(Number(rate.toFixed(4)));
                             showToast(`已自動更新即時匯率！1 TWD = ${rate.toFixed(2)} ${currency.code}`);
@@ -174,7 +173,6 @@
             const fetchWeather = (cityName) => {
                 if (!cityName) return;
                 setWeatherData({ temp: '--', text: '載入中...', icon: '' });
-                // 使用公共免費天氣 API (wttr.in) 獲取即時數據
                 fetch(`https://wttr.in/${encodeURIComponent(cityName)}?format=j1`)
                     .then(res => res.json())
                     .then(data => {
@@ -183,12 +181,11 @@
                             setWeatherData({
                                 temp: cond.temp_C + '°C',
                                 text: cond.weatherDesc[0].value,
-                                icon: 'fa-cloud-sun' // 預設圖示
+                                icon: 'fa-cloud-sun' 
                             });
                         }
                     })
                     .catch(() => {
-                        // 備用隨機產生，確保無網路時依然有完美視覺呈現效果
                         const mockTemp = Math.floor(Math.random() * 15) + 18;
                         setWeatherData({ temp: `${mockTemp}°C`, text: '晴朗時多雲', icon: 'fa-sun' });
                     });
@@ -326,7 +323,7 @@
                 </div>
             );
 
-            // --- 介面渲染: 行程 ---
+            // --- 介面渲染: 行程 (支援依日期分類) ---
             const RenderItinerary = () => {
                 const [showAddForm, setShowAddForm] = useState(false);
                 const [newItem, setNewItem] = useState({ day: uniqueDays[0] || 'Day 1', time: '10:00', title: '', address: '', transport: '', mapUrl: '' });
@@ -345,6 +342,14 @@
                     setItinerary(itinerary.map(i => i.id === editingId ? editItem : i).sort((a, b) => a.day !== b.day ? a.day.localeCompare(b.day) : a.time.localeCompare(b.time)));
                     setEditingId(null); setEditItem(null); showToast("修改完成！");
                 };
+
+                // 將行程依據日期分組
+                const groupedItinerary = useMemo(() => {
+                    return itinerary.reduce((acc, curr) => {
+                        (acc[curr.day] = acc[curr.day] || []).push(curr);
+                        return acc;
+                    }, {});
+                }, [itinerary]);
 
                 return (
                     <div className="p-4 pb-24">
@@ -368,54 +373,61 @@
                                 <button onClick={handleAdd} className="w-full py-2 rounded-lg text-white font-bold text-sm" style={{ backgroundColor: COLORS.mediumBlue }}>儲存行程</button>
                             </div>
                         )}
-                        <div className="space-y-4">
-                            {itinerary.map((item) => (
-                                <div key={item.id} className="p-4 rounded-xl shadow-sm bg-white border-l-4" style={{ borderColor: COLORS.mediumBlue }}>
-                                    {editingId === item.id ? (
-                                        <div className="flex flex-col gap-2">
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <input type="text" className="p-2 border rounded-lg text-sm" value={editItem.day} onChange={e => setEditItem({...editItem, day: e.target.value})} />
-                                                <input type="time" className="p-2 border rounded-lg text-sm" value={editItem.time} onChange={e => setEditItem({...editItem, time: e.target.value})} />
-                                            </div>
-                                            <input type="text" placeholder="標題" className="w-full p-2 border rounded-lg text-sm" value={editItem.title} onChange={e => setEditItem({...editItem, title: e.target.value})} />
-                                            <input type="text" placeholder="地址" className="w-full p-2 border rounded-lg text-sm" value={editItem.address} onChange={e => setEditItem({...editItem, address: e.target.value})} />
-                                            <input type="text" placeholder="交通" className="w-full p-2 border rounded-lg text-sm" value={editItem.transport} onChange={e => setEditItem({...editItem, transport: e.target.value})} />
-                                            <div className="flex gap-2 mt-2">
-                                                <button onClick={handleSaveEdit} className="flex-1 py-2 rounded-lg text-white font-bold text-xs" style={{ backgroundColor: COLORS.mediumBlue }}>儲存</button>
-                                                <button onClick={() => setEditingId(null)} className="flex-1 py-2 rounded-lg bg-gray-200 text-gray-700 font-bold text-xs">取消</button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <span className="text-xs font-bold px-2 py-1 rounded-full mr-2" style={{ backgroundColor: COLORS.bg, color: COLORS.darkText }}>{item.day}</span>
-                                                    <span className="font-bold text-sm" style={{ color: COLORS.darkText }}>{item.time} {item.title}</span>
-                                                </div>
-                                                <div className="flex gap-3">
-                                                    <button onClick={() => { setEditingId(item.id); setEditItem(item); setShowAddForm(false); }} className="text-gray-400"><i className="fa-solid fa-pen text-[14px]"></i></button>
-                                                    <button onClick={() => setItinerary(itinerary.filter(i => i.id !== item.id))} className="text-gray-400"><i className="fa-solid fa-trash text-[14px]"></i></button>
-                                                </div>
-                                            </div>
-                                            {(item.address || item.mapUrl) && (
-                                                <div className="mt-3 flex items-start gap-2 text-xs text-gray-600">
-                                                    <i className="fa-solid fa-location-dot mt-0.5" style={{ color: COLORS.lightBlue }}></i>
-                                                    <div className="flex-1">
-                                                        {item.address && <p className={item.mapUrl ? "mb-2" : ""}>{item.address}</p>}
-                                                        <div className="flex flex-wrap gap-2 mt-1">
-                                                            {item.mapUrl && <a href={item.mapUrl} target="_blank" rel="noreferrer" className="text-[10px] flex items-center gap-1 font-bold px-2.5 py-1 rounded-md shadow-sm text-white" style={{ backgroundColor: COLORS.mediumBlue }}><i className="fa-solid fa-link"></i> 開啟地圖</a>}
+                        
+                        <div className="space-y-6">
+                            {Object.keys(groupedItinerary).sort().map(day => (
+                                <div key={day}>
+                                    <h3 className="font-bold text-lg mb-3 flex items-center gap-2" style={{ color: COLORS.mediumBlue }}>📅 {day}</h3>
+                                    <div className="space-y-4">
+                                        {groupedItinerary[day].map((item) => (
+                                            <div key={item.id} className="p-4 rounded-xl shadow-sm bg-white border-l-4" style={{ borderColor: COLORS.mediumBlue }}>
+                                                {editingId === item.id ? (
+                                                    <div className="flex flex-col gap-2">
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <input type="text" className="p-2 border rounded-lg text-sm" value={editItem.day} onChange={e => setEditItem({...editItem, day: e.target.value})} />
+                                                            <input type="time" className="p-2 border rounded-lg text-sm" value={editItem.time} onChange={e => setEditItem({...editItem, time: e.target.value})} />
+                                                        </div>
+                                                        <input type="text" placeholder="標題" className="w-full p-2 border rounded-lg text-sm" value={editItem.title} onChange={e => setEditItem({...editItem, title: e.target.value})} />
+                                                        <input type="text" placeholder="地址" className="w-full p-2 border rounded-lg text-sm" value={editItem.address} onChange={e => setEditItem({...editItem, address: e.target.value})} />
+                                                        <input type="text" placeholder="交通" className="w-full p-2 border rounded-lg text-sm" value={editItem.transport} onChange={e => setEditItem({...editItem, transport: e.target.value})} />
+                                                        <div className="flex gap-2 mt-2">
+                                                            <button onClick={handleSaveEdit} className="flex-1 py-2 rounded-lg text-white font-bold text-xs" style={{ backgroundColor: COLORS.mediumBlue }}>儲存</button>
+                                                            <button onClick={() => setEditingId(null)} className="flex-1 py-2 rounded-lg bg-gray-200 text-gray-700 font-bold text-xs">取消</button>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            )}
-                                            {item.transport && (
-                                                <div className="mt-2 flex items-start gap-2 text-xs text-gray-600">
-                                                    <i className="fa-solid fa-location-arrow mt-0.5" style={{ color: COLORS.lightBlue }}></i>
-                                                    <p>{item.transport}</p>
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
+                                                ) : (
+                                                    <>
+                                                        <div className="flex justify-between items-start">
+                                                            <div>
+                                                                <span className="font-bold text-sm" style={{ color: COLORS.darkText }}>{item.time} {item.title}</span>
+                                                            </div>
+                                                            <div className="flex gap-3">
+                                                                <button onClick={() => { setEditingId(item.id); setEditItem(item); setShowAddForm(false); }} className="text-gray-400"><i className="fa-solid fa-pen text-[14px]"></i></button>
+                                                                <button onClick={() => setItinerary(itinerary.filter(i => i.id !== item.id))} className="text-gray-400"><i className="fa-solid fa-trash text-[14px]"></i></button>
+                                                            </div>
+                                                        </div>
+                                                        {(item.address || item.mapUrl) && (
+                                                            <div className="mt-3 flex items-start gap-2 text-xs text-gray-600">
+                                                                <i className="fa-solid fa-location-dot mt-0.5" style={{ color: COLORS.lightBlue }}></i>
+                                                                <div className="flex-1">
+                                                                    {item.address && <p className={item.mapUrl ? "mb-2" : ""}>{item.address}</p>}
+                                                                    <div className="flex flex-wrap gap-2 mt-1">
+                                                                        {item.mapUrl && <a href={item.mapUrl} target="_blank" rel="noreferrer" className="text-[10px] flex items-center gap-1 font-bold px-2.5 py-1 rounded-md shadow-sm text-white" style={{ backgroundColor: COLORS.mediumBlue }}><i className="fa-solid fa-link"></i> 開啟地圖</a>}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        {item.transport && (
+                                                            <div className="mt-2 flex items-start gap-2 text-xs text-gray-600">
+                                                                <i className="fa-solid fa-location-arrow mt-0.5" style={{ color: COLORS.lightBlue }}></i>
+                                                                <p>{item.transport}</p>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             ))}
                             {itinerary.length === 0 && <p className="text-center text-gray-500 mt-10 text-xs">尚無行程，從上方新增吧！</p>}
@@ -451,565 +463,556 @@
                     setShowForm(false); showToast("新增商品成功！");
                 };
 
-                const groupedEats = useMemo(() => mustEats.reduce((a, c) => { const ct = c.country||'其他'; const lc = c.city||'其他'; if(!a[ct])a[ct]={}; if(!a[ct][lc])a[ct][lc]=[]; a[ct][lc].push(c); return a; }, {}), [mustEats]);
-                const groupedBuys = useMemo(() => mustBuys.reduce((a, c) => { const ct = c.country||'其他'; const st = c.store||'其他'; if(!a[ct])a[ct]={}; if(!a[ct][st])a[ct][st]=[]; a[ct][st].push(c); return a; }, {}), [mustBuys]);
-
                 return (
                     <div className="p-4 pb-24">
-                        <div className="flex rounded-lg overflow-hidden mb-4 border" style={{ borderColor: COLORS.mediumBlue }}>
-                            <button className={`flex-1 py-2 font-bold text-xs ${mustGoType === 'eat' ? 'text-white' : ''}`} style={{ backgroundColor: mustGoType === 'eat' ? COLORS.mediumBlue : 'transparent', color: mustGoType === 'eat' ? '#fff' : COLORS.darkText }} onClick={() => setMustGoType('eat')}>🍽️ 必吃美食</button>
-                            <button className={`flex-1 py-2 font-bold text-xs ${mustGoType === 'buy' ? 'text-white' : ''}`} style={{ backgroundColor: mustGoType === 'buy' ? COLORS.mediumBlue : 'transparent', color: mustGoType === 'buy' ? '#fff' : COLORS.darkText }} onClick={() => setMustGoType('buy')}>🛍️ 必買清單</button>
+                        <div className="flex justify-between items-center mb-4">
+                            <div className="flex bg-white rounded-lg p-0.5 shadow-sm border">
+                                <button className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${mustGoType === 'eat' ? 'text-white' : 'text-gray-500'}`} style={{ backgroundColor: mustGoType === 'eat' ? COLORS.mediumBlue : 'transparent' }} onClick={() => { setMustGoType('eat'); setShowForm(false); }}>口袋美食</button>
+                                <button className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${mustGoType === 'buy' ? 'text-white' : 'text-gray-500'}`} style={{ backgroundColor: mustGoType === 'buy' ? COLORS.mediumBlue : 'transparent' }} onClick={() => { setMustGoType('buy'); setShowForm(false); }}>必買清單</button>
+                            </div>
+                            <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-bold text-white shadow-sm" style={{ backgroundColor: COLORS.mediumBlue }}>
+                                {showForm ? '取消' : <><i className="fa-solid fa-plus text-[14px]"></i> 新增</>}
+                            </button>
                         </div>
-                        <button onClick={() => setShowForm(!showForm)} className="w-full flex justify-center items-center gap-2 py-3 rounded-lg font-bold mb-6 shadow-sm text-xs" style={{ backgroundColor: COLORS.lightBlue, color: COLORS.darkText }}>
-                            {showForm ? '取消新增' : <><i className="fa-solid fa-plus text-[16px]"></i> 新增 {mustGoType === 'eat' ? '必吃' : '必買'}</>}
-                        </button>
-                        
+
                         {showForm && mustGoType === 'eat' && (
-                            <div className="bg-white p-4 rounded-xl shadow mb-6 border" style={{ borderColor: COLORS.mediumBlue }}>
-                                <div className="mb-4">
-                                    <label className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed bg-slate-50 cursor-pointer" style={{ borderColor: COLORS.lightBlue }}>
-                                        {eatForm.image ? (
-                                            <div className="relative w-full">
-                                                <img src={eatForm.image} alt="preview" className="w-full h-32 object-cover rounded-lg" />
-                                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded-lg text-white font-bold text-xs"><i className="fa-solid fa-camera mr-1"></i> 更換照片</div>
-                                            </div>
-                                        ) : (
-                                            <div className="flex flex-col items-center text-gray-500 text-xs"><i className="fa-solid fa-camera text-2xl mb-1"></i>上傳照片 (自動壓縮)</div>
-                                        )}
-                                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'eat')} />
-                                    </label>
-                                </div>
-                                <input type="text" placeholder="店家名稱" className="w-full p-2 border rounded-lg text-sm mb-2" value={eatForm.name} onChange={e=>setEatForm({...eatForm, name: e.target.value})} />
+                            <div className="p-4 mb-5 rounded-lg bg-white border shadow-sm">
+                                <h3 className="font-bold text-xs mb-3">新增美食店家</h3>
+                                <input type="text" placeholder="店名 (必填)" className="w-full p-2 border rounded-lg text-sm mb-2" value={eatForm.name} onChange={e => setEatForm({...eatForm, name: e.target.value})} />
                                 <div className="grid grid-cols-2 gap-2 mb-2">
-                                    <input type="text" placeholder="國家" className="p-2 border rounded-lg text-sm" value={eatForm.country} onChange={e=>setEatForm({...eatForm, country: e.target.value})} />
-                                    <input type="text" placeholder="城市" className="p-2 border rounded-lg text-sm" value={eatForm.city} onChange={e=>setEatForm({...eatForm, city: e.target.value})} />
+                                    <CreatableSelect label="美食分類" options={foodTypes} value={eatForm.type} onChange={v => setEatForm({...eatForm, type: v})} onAddOption={n => setFoodTypes([...foodTypes, n])} placeholder="選擇分類" />
+                                    <div className="flex flex-col gap-1 mb-3"><label className="text-xs font-bold" style={{color: COLORS.darkText}}>預估費用</label>
+                                    <input type="number" placeholder="費用" className="p-2 border rounded-lg text-sm bg-white" value={eatForm.cost} onChange={e => setEatForm({...eatForm, cost: e.target.value})} /></div>
                                 </div>
-                                <CreatableSelect label="美食類型" options={foodTypes} value={eatForm.type} onChange={(v)=>setEatForm({...eatForm, type: v})} onAddOption={(n)=>setFoodTypes([...foodTypes, n])} placeholder="選擇類型..." />
-                                <div className="grid grid-cols-2 gap-2 mb-3">
-                                    <input type="number" placeholder="預估消費" className="p-2 border rounded-lg text-sm" value={eatForm.cost} onChange={e=>setEatForm({...eatForm, cost: e.target.value})} />
-                                    <select className="p-2 border rounded-lg bg-white text-sm" value={eatForm.currency} onChange={e=>setEatForm({...eatForm, currency: e.target.value})}>
-                                        {CURRENCIES.map(c=><option key={c.code} value={c.code}>{c.code}({c.symbol})</option>)}
-                                    </select>
+                                <input type="text" placeholder="地圖或介紹網址 (選填)" className="w-full p-2 border rounded-lg text-sm mb-3" value={eatForm.url} onChange={e => setEatForm({...eatForm, url: e.target.value})} />
+                                <div className="mb-3">
+                                    <label className="block text-xs font-bold mb-1">上傳實拍/截圖</label>
+                                    <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'eat')} className="text-xs text-gray-500 block w-full file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200" />
+                                    {eatForm.image && <img src={eatForm.image} className="mt-2 h-20 w-20 object-cover rounded-lg border" alt="preview" />}
                                 </div>
-                                <input type="text" placeholder="地圖或食記連結" className="w-full p-2 border rounded-lg text-sm mb-3" value={eatForm.url} onChange={e=>setEatForm({...eatForm, url: e.target.value})} />
-                                <button onClick={handleAddEat} className="w-full py-2 rounded-lg text-white font-bold text-sm" style={{ backgroundColor: COLORS.mediumBlue }}>確認新增</button>
+                                <button onClick={handleAddEat} className="w-full py-2 rounded-lg text-white font-bold text-sm" style={{ backgroundColor: COLORS.mediumBlue }}>儲存美食</button>
                             </div>
                         )}
 
                         {showForm && mustGoType === 'buy' && (
-                            <div className="bg-white p-4 rounded-xl shadow mb-6 border" style={{ borderColor: COLORS.mediumBlue }}>
-                                <div className="mb-4">
-                                    <label className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed bg-slate-50 cursor-pointer" style={{ borderColor: COLORS.lightBlue }}>
-                                        {buyForm.image ? (
-                                            <div className="relative w-full">
-                                                <img src={buyForm.image} alt="preview" className="w-full h-32 object-cover rounded-lg" />
-                                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded-lg text-white font-bold text-xs"><i className="fa-solid fa-camera mr-1"></i> 更換照片</div>
-                                            </div>
-                                        ) : (
-                                            <div className="flex flex-col items-center text-gray-500 text-xs"><i className="fa-solid fa-camera text-2xl mb-1"></i>上傳商品照片</div>
-                                        )}
-                                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'buy')} />
-                                    </label>
+                            <div className="p-4 mb-5 rounded-lg bg-white border shadow-sm">
+                                <h3 className="font-bold text-xs mb-3">新增必買項目</h3>
+                                <input type="text" placeholder="商品名稱/備註 (必填)" className="w-full p-2 border rounded-lg text-sm mb-2" value={buyForm.notes} onChange={e => setBuyForm({...buyForm, notes: e.target.value})} />
+                                <div className="grid grid-cols-2 gap-2 mb-2">
+                                    <CreatableSelect label="購買店家" options={stores[currentTrip.country] || []} value={buyForm.store} onChange={v => setBuyForm({...buyForm, store: v})} onAddOption={n => setStores({...stores, [currentTrip.country]: [...(stores[currentTrip.country]||[]), n]})} placeholder="選擇商店" />
+                                    <CreatableSelect label="品項分類" options={itemTypes} value={buyForm.type} onChange={v => setBuyForm({...buyForm, type: v})} onAddOption={n => setItemTypes([...itemTypes, n])} placeholder="選擇分類" />
                                 </div>
-                                <input type="text" placeholder="商品品名 / 描述" className="w-full p-2 border rounded-lg text-sm mb-2" value={buyForm.notes} onChange={e=>setBuyForm({...buyForm, notes: e.target.value})} />
-                                <CreatableSelect label="預計購買店家" options={stores[currentTrip.country] || []} value={buyForm.store} onChange={(v)=>setBuyForm({...buyForm, store: v})} onAddOption={(n)=>setStores({...stores, [currentTrip.country]: [...(stores[currentTrip.country]||[]), n]})} placeholder="選擇購買通路..." />
-                                <CreatableSelect label="商品品項分類" options={itemTypes} value={buyForm.type} onChange={(v)=>setBuyForm({...buyForm, type: v})} onAddOption={(n)=>setItemTypes([...itemTypes, n])} placeholder="選擇分類..." />
                                 <div className="grid grid-cols-2 gap-2 mb-3">
-                                    <input type="number" placeholder="商品單價" className="p-2 border rounded-lg text-sm" value={buyForm.cost} onChange={e=>setBuyForm({...buyForm, cost: e.target.value})} />
-                                    <select className="p-2 border rounded-lg bg-white text-sm" value={buyForm.currency} onChange={e=>setBuyForm({...buyForm, currency: e.target.value})}>
-                                        {CURRENCIES.map(c=><option key={c.code} value={c.code}>{c.code}({c.symbol})</option>)}
-                                    </select>
+                                    <div className="flex flex-col gap-1"><label className="text-xs font-bold" style={{color: COLORS.darkText}}>預估費用</label>
+                                    <input type="number" placeholder="金額" className="p-2 border rounded-lg text-sm bg-white" value={buyForm.cost} onChange={e => setBuyForm({...buyForm, cost: e.target.value})} /></div>
+                                    <div className="flex flex-col gap-1"><label className="text-xs font-bold" style={{color: COLORS.darkText}}>參考連結</label>
+                                    <input type="text" placeholder="網址" className="p-2 border rounded-lg text-sm bg-white" value={buyForm.url} onChange={e => setBuyForm({...buyForm, url: e.target.value})} /></div>
                                 </div>
-                                <input type="text" placeholder="參考網址連結" className="w-full p-2 border rounded-lg text-sm mb-3" value={buyForm.url} onChange={e=>setBuyForm({...buyForm, url: e.target.value})} />
-                                <button onClick={handleAddBuy} className="w-full py-2 rounded-lg text-white font-bold text-sm" style={{ backgroundColor: COLORS.mediumBlue }}>確認新增商品</button>
+                                <div className="mb-3">
+                                    <label className="block text-xs font-bold mb-1">上傳商品截圖</label>
+                                    <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'buy')} className="text-xs text-gray-500 block w-full file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200" />
+                                    {buyForm.image && <img src={buyForm.image} className="mt-2 h-20 w-20 object-cover rounded-lg border" alt="preview" />}
+                                </div>
+                                <button onClick={handleAddBuy} className="w-full py-2 rounded-lg text-white font-bold text-sm" style={{ backgroundColor: COLORS.mediumBlue }}>儲存購物項目</button>
                             </div>
                         )}
 
-                        {/* 清單卡片呈現 */}
                         {mustGoType === 'eat' ? (
-                            <div className="space-y-6">
-                                {Object.keys(groupedEats).map(ct => (
-                                    <div key={ct}>
-                                        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1"><i className="fa-solid fa-flag"></i> {ct}</div>
-                                        {Object.keys(groupedEats[ct]).map(cc => (
-                                            <div key={cc} className="mb-4 bg-white rounded-xl p-3 shadow-sm border border-gray-100">
-                                                <div className="text-sm font-bold border-b pb-1.5 mb-2" style={{color: COLORS.mediumBlue}}><i className="fa-solid fa-city mr-1"></i> {cc}</div>
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    {groupedEats[ct][cc].map(item => (
-                                                        <div key={item.id} className="bg-slate-50 rounded-lg overflow-hidden border flex flex-col justify-between">
-                                                            <div>
-                                                                {item.image ? <img src={item.image} className="w-full h-24 object-cover" /> : <div className="w-full h-24 bg-slate-200 flex items-center justify-center text-gray-400 text-xs">無照片</div>}
-                                                                <div className="p-2">
-                                                                    <div className="font-bold text-xs truncate" style={{color: COLORS.darkText}}>{item.name}</div>
-                                                                    <div className="text-[10px] text-gray-500 mt-0.5">{item.type}</div>
-                                                                    {item.cost && <div className="text-xs font-mono font-bold mt-1 text-emerald-600">{CURRENCIES.find(x=>x.code===item.currency)?.symbol || '$'}{item.cost}</div>}
-                                                                </div>
-                                                            </div>
-                                                            <div className="p-1.5 bg-slate-100 border-t flex gap-1">
-                                                                <button onClick={()=>setAddToItinModal({isOpen: true, item})} className="flex-1 text-[10px] py-1 bg-white border rounded font-bold text-center" style={{color: COLORS.mediumBlue}}><i className="fa-solid fa-calendar-plus"></i> 排行程</button>
-                                                                <button onClick={()=>setMustEats(mustEats.filter(x=>x.id!==item.id))} className="px-2 py-1 bg-white text-gray-400 border rounded text-[10px]"><i className="fa-solid fa-trash"></i></button>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                {mustEats.map(item => (
+                                    <div key={item.id} className="bg-white rounded-xl overflow-hidden border shadow-sm flex flex-col justify-between">
+                                        <div>
+                                            {item.image ? <img src={item.image} className="w-full h-32 object-cover" alt="" /> : <div className="w-full h-24 bg-gray-100 flex items-center justify-center text-gray-400"><i className="fa-solid fa-utensils text-2xl"></i></div>}
+                                            <div className="p-3">
+                                                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold text-white" style={{ backgroundColor: COLORS.lightBlue }}>{item.type || '未分類'}</span>
+                                                <h4 className="font-bold text-sm mt-1 text-gray-800 line-clamp-1">{item.name}</h4>
+                                                {item.cost && <p className="text-xs text-orange-600 font-bold mt-1">{item.currency || currency.code} {item.cost}</p>}
                                             </div>
-                                        ))}
+                                        </div>
+                                        <div className="p-2 bg-gray-50 border-t flex justify-between gap-1">
+                                            <button onClick={() => setAddToItinModal({ isOpen: true, item })} className="flex-1 text-[11px] font-bold py-1 px-2 rounded bg-emerald-500 text-white flex items-center justify-center gap-0.5 shadow-sm"><i className="fa-solid fa-calendar-plus"></i> 排行程</button>
+                                            {item.url && <a href={item.url} target="_blank" rel="noreferrer" className="p-1 text-xs bg-blue-500 text-white rounded text-center w-7 shadow-sm"><i className="fa-solid fa-map-location-dot"></i></a>}
+                                            <button onClick={() => setMustEats(mustEats.filter(x => x.id !== item.id))} className="p-1 text-xs bg-red-400 text-white rounded text-center w-7 shadow-sm"><i className="fa-solid fa-trash"></i></button>
+                                        </div>
                                     </div>
                                 ))}
+                                {mustEats.length === 0 && <p className="text-center col-span-2 text-gray-500 py-10 text-xs">尚無口袋美食資訊。</p>}
                             </div>
                         ) : (
-                            <div className="space-y-6">
-                                {Object.keys(groupedBuys).map(ct => (
-                                    <div key={ct}>
-                                        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1"><i className="fa-solid fa-flag"></i> {ct}</div>
-                                        {Object.keys(groupedBuys[ct]).map(st => (
-                                            <div key={st} className="mb-4 bg-white rounded-xl p-3 shadow-sm border border-gray-100">
-                                                <div className="text-sm font-bold border-b pb-1.5 mb-2" style={{color: COLORS.mediumBlue}}><i className="fa-solid fa-store mr-1"></i> {st}</div>
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    {groupedBuys[ct][st].map(item => (
-                                                        <div key={item.id} className="bg-slate-50 rounded-lg overflow-hidden border flex flex-col justify-between">
-                                                            <div>
-                                                                {item.image ? <img src={item.image} className="w-full h-24 object-cover" /> : <div className="w-full h-24 bg-slate-200 flex items-center justify-center text-gray-400 text-xs">無照片</div>}
-                                                                <div className="p-2">
-                                                                    <div className="font-bold text-xs truncate" style={{color: COLORS.darkText}}>{item.notes}</div>
-                                                                    <div className="text-[10px] text-gray-500 mt-0.5">{item.type}</div>
-                                                                    {item.cost && <div className="text-xs font-mono font-bold mt-1 text-indigo-600">{CURRENCIES.find(x=>x.code===item.currency)?.symbol || '$'}{item.cost}</div>}
-                                                                </div>
-                                                            </div>
-                                                            <div className="p-1.5 bg-slate-100 border-t flex gap-1">
-                                                                <button onClick={()=>{ if(shoppingList.some(x=>x.text===item.notes)) { showToast("已存在購物清單！"); return; } setShoppingList([...shoppingList, {id: Date.now(), text: item.notes, store: item.store, cost: item.cost, checked: false, qty: 1}]); showToast("已加入購物清單！"); }} className="flex-1 text-[10px] py-1 bg-white border rounded font-bold text-center text-emerald-700"><i className="fa-solid fa-cart-plus"></i> 買清單</button>
-                                                                <button onClick={()=>setMustBuys(mustBuys.filter(x=>x.id!==item.id))} className="px-2 py-1 bg-white text-gray-400 border rounded text-[10px]"><i className="fa-solid fa-trash"></i></button>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                {mustBuys.map(item => (
+                                    <div key={item.id} className="bg-white rounded-xl overflow-hidden border shadow-sm flex flex-col justify-between">
+                                        <div>
+                                            {item.image ? <img src={item.image} className="w-full h-32 object-cover" alt="" /> : <div className="w-full h-24 bg-gray-100 flex items-center justify-center text-gray-400"><i className="fa-solid fa-bag-shopping text-2xl"></i></div>}
+                                            <div className="p-3">
+                                                <div className="flex gap-1 flex-wrap"><span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-500 text-white">{item.store || '不限店家'}</span>
+                                                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-500 text-white">{item.type || '未分類'}</span></div>
+                                                <h4 className="font-bold text-sm mt-1.5 text-gray-800 line-clamp-2">{item.notes}</h4>
+                                                {item.cost && <p className="text-xs text-orange-600 font-bold mt-1">{item.currency || currency.code} {item.cost}</p>}
                                             </div>
-                                        ))}
+                                        </div>
+                                        <div className="p-2 bg-gray-50 border-t flex justify-between gap-1">
+                                            <button onClick={() => setAddToItinModal({ isOpen: true, item })} className="flex-1 text-[11px] font-bold py-1 px-2 rounded bg-emerald-500 text-white flex items-center justify-center gap-0.5 shadow-sm"><i className="fa-solid fa-calendar-plus"></i> 排行程</button>
+                                            {item.url && <a href={item.url} target="_blank" rel="noreferrer" className="p-1 text-xs bg-blue-500 text-white rounded text-center w-7 shadow-sm"><i className="fa-solid fa-link"></i></a>}
+                                            <button onClick={() => setMustBuys(mustBuys.filter(x => x.id !== item.id))} className="p-1 text-xs bg-red-400 text-white rounded text-center w-7 shadow-sm"><i className="fa-solid fa-trash"></i></button>
+                                        </div>
                                     </div>
                                 ))}
+                                {mustBuys.length === 0 && <p className="text-center col-span-2 text-gray-500 py-10 text-xs">尚無必買商品資訊。</p>}
                             </div>
                         )}
                     </div>
                 );
             };
 
-            // --- 介面渲染: 購物小幫手 ---
+            // --- 介面渲染: 購物車試算 ---
             const RenderShoppingList = () => {
-                const [input, setInput] = useState('');
-                const [selectedStore, setSelectedStore] = useState('');
-                const [priceInput, setPriceInput] = useState('');
-                const [qtyInput, setQtyInput] = useState(1);
+                const [itemText, setItemText] = useState('');
+                const [itemCost, setItemCost] = useState('');
+                const [itemQty, setItemQty] = useState('1');
 
                 const handleAddItem = () => {
-                    if (!input.trim()) return;
-                    setShoppingList([...shoppingList, { id: Date.now(), text: input.trim(), store: selectedStore, cost: priceInput, qty: Number(qtyInput)||1, checked: false }]);
-                    setInput(''); setPriceInput(''); setQtyInput(1);
+                    if (!itemText || !itemCost) return;
+                    setShoppingList([...shoppingList, { id: Date.now(), text: itemText, cost: Number(itemCost), qty: Number(itemQty), checked: false }]);
+                    setItemText(''); setItemCost(''); setItemQty('1'); showToast("商品已加入試算清單！");
                 };
 
-                const currentCountryStores = stores[currentTrip.country] || [];
+                const toggleCheck = (id) => setShoppingList(shoppingList.map(item => item.id === id ? { ...item, checked: !item.checked } : item));
+                const deleteItem = (id) => setShoppingList(shoppingList.filter(item => item.id !== id));
+
+                const totals = useMemo(() => {
+                    let foreignTotal = 0;
+                    shoppingList.forEach(item => { if (item.checked) foreignTotal += (item.cost * item.qty); });
+                    const twdTotal = getTwdEquivalent(foreignTotal, currency.code, exchangeRate);
+                    return { foreign: foreignTotal, twd: twdTotal };
+                }, [shoppingList, currency, exchangeRate]);
 
                 return (
                     <div className="p-4 pb-24">
-                        <h2 className="text-xl font-bold mb-3" style={{ color: COLORS.darkText }}>即時計算購物清單</h2>
-                        <div className="bg-white p-4 rounded-xl shadow-sm border mb-4">
-                            <input type="text" placeholder="欲購買商品品名..." className="w-full p-2 border rounded-lg text-sm mb-2" value={input} onChange={e=>setInput(e.target.value)} />
-                            <div className="grid grid-cols-2 gap-2 mb-2">
-                                <CreatableSelect label="預計購買地點" options={currentCountryStores} value={selectedStore} onChange={(v)=>setSelectedStore(v)} onAddOption={(n)=>setStores({...stores, [currentTrip.country]: [...currentCountryStores, n]})} placeholder="選擇店面..." />
-                                <div className="flex flex-col gap-1">
-                                    <label className="text-xs font-bold" style={{color:COLORS.darkText}}>數量</label>
-                                    <input type="number" className="p-2 border rounded-lg text-sm" value={qtyInput} onChange={e=>setQtyInput(e.target.value)} />
-                                </div>
+                        <h2 className="text-xl font-bold mb-2" style={{ color: COLORS.darkText }}>現場採購即時購物車</h2>
+                        <p className="text-xs text-gray-500 mb-4">勾選已放入購物車的品項，即刻換算為台幣總額！</p>
+                        
+                        <div className="bg-white p-4 rounded-xl border shadow-sm mb-4">
+                            <div className="flex gap-2 mb-2">
+                                <input type="text" placeholder="商品名稱..." className="flex-1 p-2 border rounded-lg text-sm bg-white" value={itemText} onChange={e => setItemText(e.target.value)} />
+                                <input type="number" placeholder={`金額 (${currency.code})`} className="w-28 p-2 border rounded-lg text-sm bg-white" value={itemCost} onChange={e => setItemCost(e.target.value)} />
+                                <input type="number" placeholder="數量" className="w-16 p-2 border rounded-lg text-sm bg-white" value={itemQty} onChange={e => setItemQty(e.target.value)} />
                             </div>
-                            <div className="flex gap-2 items-end mb-3">
-                                <div className="flex-1 flex flex-col gap-1">
-                                    <label className="text-xs font-bold" style={{color:COLORS.darkText}}>外幣單價 ({currency.code})</label>
-                                    <input type="number" placeholder="未填視為 0" className="p-2 border rounded-lg text-sm" value={priceInput} onChange={e=>setPriceInput(e.target.value)} />
-                                </div>
-                                <button onClick={handleAddItem} className="px-4 py-2 text-white font-bold rounded-lg text-sm h-[42px]" style={{backgroundColor: COLORS.mediumBlue}}><i className="fa-solid fa-plus"></i> 新增</button>
-                            </div>
+                            <button onClick={handleAddItem} className="w-full py-2 rounded-lg text-white font-bold text-sm" style={{ backgroundColor: COLORS.mediumBlue }}>加入清單</button>
                         </div>
 
-                        <div className="space-y-2">
-                            {shoppingList.map(item => {
-                                const twd = getTwdEquivalent((Number(item.cost)||0)*item.qty, currency.code, exchangeRate);
-                                return (
-                                    <div key={item.id} className={`p-3 rounded-xl border bg-white flex items-center justify-between shadow-sm transition-opacity ${item.checked ? 'opacity-50' : ''}`}>
-                                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                                            <input type="checkbox" className="w-4 h-4 rounded" checked={item.checked} onChange={e => setShoppingList(shoppingList.map(x=>x.id===item.id?{...x, checked:e.target.checked}:x))} />
-                                            <div className="min-w-0 flex-1">
-                                                <p className={`text-sm font-bold truncate ${item.checked ? 'line-through text-gray-400' : ''}`} style={{color:COLORS.darkText}}>{item.text} <span className="text-xs font-normal text-gray-500">x{item.qty}</span></p>
-                                                {item.store && <span className="inline-block text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-gray-500 mt-0.5"><i className="fa-solid fa-store"></i> {item.store}</span>}
-                                            </div>
-                                        </div>
-                                        <div className="text-right ml-2 flex items-center gap-3">
-                                            <div>
-                                                {item.cost ? (
-                                                    <>
-                                                        <p className="text-xs font-mono font-bold text-gray-600">{currency.symbol}{Math.ceil((Number(item.cost)||0)*item.qty)}</p>
-                                                        <p className="text-[10px] font-mono text-emerald-600 font-bold">≈ NT${twd}</p>
-                                                    </>
-                                                ) : <p className="text-xs text-gray-400">未輸入金額</p>}
-                                            </div>
-                                            <button onClick={()=>setShoppingList(shoppingList.filter(x=>x.id!==item.id))} className="text-gray-300 hover:text-red-400"><i className="fa-solid fa-circle-xmark"></i></button>
+                        <div className="bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-xl p-4 shadow-md mb-4 flex justify-between items-center">
+                            <div><span className="text-xs block opacity-90">已選購商品總結計</span>
+                            <span className="text-xl font-black">{currency.symbol} {totals.foreign.toLocaleString()}</span></div>
+                            <div className="text-right"><span className="text-xs block opacity-90">預估折合台幣</span>
+                            <span className="text-2xl font-black">NT$ {totals.twd?.toLocaleString() || 0}</span></div>
+                        </div>
+
+                        <div className="bg-white rounded-xl border shadow-sm divide-y">
+                            {shoppingList.map(item => (
+                                <div key={item.id} className="p-3 flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-3 flex-1">
+                                        <input type="checkbox" checked={item.checked} onChange={() => toggleCheck(item.id)} className="w-4 h-4 rounded text-blue-600 focus:ring-0 border-gray-300" />
+                                        <div className={item.checked ? "line-through text-gray-400 text-sm" : "text-sm text-gray-800"}>
+                                            <p className="font-medium">{item.text}</p>
+                                            <p className="text-xs text-gray-500">{currency.symbol}{item.cost} × {item.qty}件 → 折合約 NT$ {getTwdEquivalent(item.cost * item.qty, currency.code, exchangeRate)}</p>
                                         </div>
                                     </div>
-                                );
-                            })}
+                                    <button onClick={() => deleteItem(item.id)} className="text-gray-300 hover:text-red-500 transition-colors p-1"><i className="fa-solid fa-trash-can"></i></button>
+                                </div>
+                            ))}
+                            {shoppingList.length === 0 && <p className="text-center text-gray-500 py-10 text-xs">購物車內尚無品項。</p>}
                         </div>
                     </div>
                 );
             };
 
-            // --- 介面渲染: 行前檢查與設定 ---
-            const RenderSettings = () => (
-                <div className="p-4 pb-24 space-y-6">
-                    <div>
-                        <h2 className="text-xl font-bold mb-3" style={{ color: COLORS.darkText }}>行前必備清單檢查</h2>
-                        <div className="bg-white rounded-xl shadow-sm border p-4 space-y-2.5">
-                            {prepList.map(item => (
-                                <label key={item.id} className="flex items-start gap-3 p-1 cursor-pointer">
-                                    <input type="checkbox" className="w-4 h-4 mt-0.5 rounded" checked={item.checked} onChange={e=>setPrepList(prepList.map(x=>x.id===item.id?{...x, checked:e.target.checked}:x))} />
-                                    <span className={`text-xs leading-5 ${item.checked ? 'line-through text-gray-400' : 'text-gray-700'}`}>{item.text}</span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-sm border p-5">
-                        <h3 className="font-bold mb-3 text-sm flex items-center gap-1" style={{color: COLORS.darkText}}><i className="fa-solid fa-gears"></i> 系統系統進階設定</h3>
-                        <div className="grid grid-cols-2 gap-3 mb-4">
-                            <button onClick={handleExportData} className="py-2.5 border rounded-lg font-bold text-xs bg-slate-50 flex items-center justify-center gap-1" style={{color: COLORS.mediumBlue}}><i className="fa-solid fa-cloud-arrow-down"></i> 匯出本機備份</button>
-                            <label className="py-2.5 border rounded-lg font-bold text-xs bg-slate-50 flex items-center justify-center gap-1 cursor-pointer text-center" style={{color: COLORS.mediumBlue}}>
-                                <i className="fa-solid fa-cloud-arrow-up"></i> 匯入覆蓋檔案
-                                <input type="file" accept=".json" className="hidden" onChange={handleImportData} />
-                            </label>
-                        </div>
-                        <button onClick={()=>{ if(confirm("確定要完全清除本App內所有快取行程資料嗎？(不可復原)")) { localStorage.clear(); window.location.reload(); } }} className="w-full py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg font-bold text-xs"><i className="fa-solid fa-trash-can"></i> 初始化清除全App所有資料</button>
-                    </div>
-                </div>
-            );
-
-            // --- 介面渲染: 記帳結算分頁 (手動新增功能完全在這邊實作) ---
+            // --- 介面渲染: 多人分帳記帳 ---
             const RenderSplitBill = () => {
-                const [showManualForm, setShowManualForm] = useState(false);
+                const [editingExpenseId, setEditingExpenseId] = useState(null);
                 const [newMember, setNewMember] = useState('');
-                
-                // 手動新增帳目專用表單狀態
-                const [manualExpense, setManualExpense] = useState({
-                    name: '',
-                    amount: '',
-                    paidBy: splitMembers[0] || '自己',
-                    splitType: 'ALL', // ALL = 所有人平分, CUSTOM = 特定人平分 (這裡預設全部平分簡化流程)
-                    currencyCode: currency.code
-                });
+                const [title, setTitle] = useState('');
+                const [amount, setAmount] = useState('');
+                const [paidBy, setPaidBy] = useState(splitMembers[0] || '');
+                const [selectedCurrency, setSelectedCurrency] = useState('TWD');
+                const [customRate, setCustomRate] = useState('');
+                const [isCustomRate, setIsCustomRate] = useState(false);
+                const [shares, setShares] = useState({});
 
-                // 新增成員
-                const handleAddMember = () => {
-                    if(!newMember.trim()) return;
-                    if(splitMembers.includes(newMember.trim())) { showToast("成員名稱重複！"); return; }
-                    setSplitMembers([...splitMembers, newMember.trim()]);
-                    setNewMember('');
-                };
+                useEffect(() => {
+                    if (splitMembers.length > 0 && !paidBy) setPaidBy(splitMembers[0]);
+                    const initShares = {};
+                    splitMembers.forEach(m => { initShares[m] = true; });
+                    setShares(initShares);
+                }, [splitMembers]);
 
-                // 移除成員
-                const handleRemoveMember = (m) => {
-                    if(splitMembers.length <= 1) { showToast("至少需保留一位成員！"); return; }
-                    setSplitMembers(splitMembers.filter(x=>x!==m));
-                    setSplitExpenses(splitExpenses.filter(x=>x.paidBy!==m));
-                };
-
-                // 手動新增帳目送出處理
-                const handleAddManualExpense = () => {
-                    if (!manualExpense.name.trim() || !manualExpense.amount || isNaN(manualExpense.amount)) {
-                        showToast("請輸入完整的項目名稱與金額！");
-                        return;
+                // 匯率切換自動帶入
+                useEffect(() => {
+                    if (selectedCurrency === 'TWD') { setCustomRate('1'); }
+                    else if (selectedCurrency === currency.code) { setCustomRate(exchangeRate.toString()); }
+                    else {
+                        const target = CURRENCIES.find(c => c.code === selectedCurrency);
+                        setCustomRate(target ? target.defaultRate.toString() : '1');
                     }
-                    
-                    const selectedCur = CURRENCIES.find(c => c.code === manualExpense.currencyCode);
-                    const currentRate = selectedCur?.code === 'TWD' ? 1 : (selectedCur?.code === currency.code ? exchangeRate : selectedCur?.defaultRate || 1);
-                    const twdValue = getTwdEquivalent(manualExpense.amount, manualExpense.currencyCode, currentRate);
+                }, [selectedCurrency, currency, exchangeRate]);
 
-                    const newRecord = {
-                        id: 'manual_' + Date.now(),
-                        name: manualExpense.name.trim(),
-                        amount: Number(manualExpense.amount),
-                        currencyCode: manualExpense.currencyCode,
-                        twdAmount: twdValue,
-                        paidBy: manualExpense.paidBy,
-                        type: 'manual' // 標記為手動新增的項目
-                    };
-
-                    setSplitExpenses([...splitExpenses, newRecord]);
-                    setManualExpense({
-                        name: '',
-                        amount: '',
-                        paidBy: splitMembers[0] || '自己',
-                        splitType: 'ALL',
-                        currencyCode: currency.code
-                    });
-                    setShowManualForm(false);
-                    showToast("帳目手動新增成功！");
+                const handleAddMember = () => {
+                    if (!newMember.trim() || splitMembers.includes(newMember.trim())) return;
+                    setSplitMembers([...splitMembers, newMember.trim()]); setNewMember('');
+                    showToast("成功加入分帳成員！");
                 };
 
-                // 整合購物清單(已勾選)與手動新增的帳目數據
-                const totalCalculatedExpenses = useMemo(() => {
-                    // 1. 先抽取購物清單中已勾選且有金額的項目
-                    const shoppingExpenses = shoppingList.filter(x => x.checked && x.cost).map(x => {
-                        const totalForeign = (Number(x.cost) || 0) * (x.qty || 1);
-                        return {
-                            id: 'shop_' + x.id,
-                            name: x.text,
-                            amount: totalForeign,
-                            currencyCode: currency.code,
-                            twdAmount: getTwdEquivalent(totalForeign, currency.code, exchangeRate),
-                            paidBy: splitMembers[0] || '自己', // 預設購物清單由主要第一成員先付
-                            type: 'shopping'
-                        };
-                    });
+                const handleAddExpense = () => {
+                    if (!title || !amount || isNaN(amount)) return;
+                    const finalRate = Number(customRate) || 1;
+                    const twdAmount = selectedCurrency === 'TWD' ? Math.ceil(Number(amount)) : Math.ceil(Number(amount) / finalRate);
+                    const involvedMembers = Object.keys(shares).filter(m => shares[m]);
+                    if (involvedMembers.length === 0) { alert("請至少選擇一位幫忙分攤的成員！"); return; }
 
-                    // 2. 合併手動新增的項目
-                    return [...shoppingExpenses, ...splitExpenses];
-                }, [shoppingList, splitExpenses, currency, exchangeRate, splitMembers]);
+                    if (editingExpenseId) {
+                        setSplitExpenses(splitExpenses.map(exp => exp.id === editingExpenseId ? {
+                            ...exp, title, amount: Number(amount), currencyCode: selectedCurrency, rate: finalRate, twdAmount, paidBy, mInvolved: involvedMembers
+                        } : exp));
+                        setEditingExpenseId(null);
+                        showToast("記帳項目修改成功！");
+                    } else {
+                        setSplitExpenses([...splitExpenses, {
+                            id: Date.now(), title, amount: Number(amount), currencyCode: selectedCurrency, rate: finalRate, twdAmount, paidBy, mInvolved: involvedMembers
+                        }]);
+                        showToast("成功記錄一筆手動花費！");
+                    }
 
-                // 統計總台幣金額花費
-                const totalTwdCost = useMemo(() => {
-                    return totalCalculatedExpenses.reduce((sum, item) => sum + (item.twdAmount || 0), 0);
-                }, [totalCalculatedExpenses]);
+                    setTitle(''); setAmount(''); 
+                    const resetShares = {}; splitMembers.forEach(m => { resetShares[m] = true; }); setShares(resetShares);
+                    setIsCustomRate(false);
+                };
 
-                // 每人平均花費
-                const avgTwdCost = useMemo(() => {
-                    if (splitMembers.length === 0) return 0;
-                    return Math.ceil(totalTwdCost / splitMembers.length);
-                }, [totalTwdCost, splitMembers]);
-
-                // 計算每人的收支平衡狀態 (總付出 - 應付出)
-                const balanceReport = useMemo(() => {
-                    const report = {};
-                    splitMembers.forEach(m => { report[m] = 0; });
+                const handleEditExpense = (exp) => {
+                    setEditingExpenseId(exp.id);
+                    setTitle(exp.title);
+                    setAmount(exp.amount.toString());
+                    setPaidBy(exp.paidBy);
+                    setSelectedCurrency(exp.currencyCode);
+                    setCustomRate(exp.rate.toString());
+                    setIsCustomRate(true);
                     
-                    totalCalculatedExpenses.forEach(item => {
-                        // 付款人先加上該筆付出的全額台幣
-                        if (report[item.paidBy] !== undefined) {
-                            report[item.paidBy] += item.twdAmount;
-                        }
-                        // 每個人平分扣除應付份額
-                        const share = item.twdAmount / splitMembers.length;
-                        splitMembers.forEach(m => {
-                            report[m] -= share;
-                        });
+                    const editShares = {};
+                    splitMembers.forEach(m => {
+                        editShares[m] = exp.mInvolved.includes(m);
+                    });
+                    setShares(editShares);
+                    showToast("已將資料帶回上方表單，修改後點擊儲存即可。");
+                };
+
+                const handleCancelEdit = () => {
+                    setEditingExpenseId(null);
+                    setTitle(''); setAmount('');
+                    const resetShares = {}; splitMembers.forEach(m => { resetShares[m] = true; }); setShares(resetShares);
+                    setIsCustomRate(false);
+                };
+
+                // 核心計算公式
+                const splitResults = useMemo(() => {
+                    const balances = {};
+                    let totalTwd = 0;
+                    splitMembers.forEach(m => { balances[m] = 0; });
+                    
+                    splitExpenses.forEach(exp => {
+                        totalTwd += exp.twdAmount;
+                        balances[exp.paidBy] += exp.twdAmount;
+                        const perShare = exp.twdAmount / exp.mInvolved.length;
+                        exp.mInvolved.forEach(m => { balances[m] -= perShare; });
                     });
 
-                    return report;
-                }, [splitMembers, totalCalculatedExpenses]);
+                    const averagePerPerson = splitMembers.length > 0 ? Math.ceil(totalTwd / splitMembers.length) : 0;
+
+                    const creditors = []; const debtors = [];
+                    Object.keys(balances).forEach(m => {
+                        if (balances[m] > 0.1) creditors.push({ name: m, amt: balances[m] });
+                        else if (balances[m] < -0.1) debtors.push({ name: m, amt: Math.abs(balances[m]) });
+                    });
+
+                    const payments = []; let cIdx = 0; let dIdx = 0;
+                    while (cIdx < creditors.length && dIdx < debtors.length) {
+                        const c = creditors[cIdx]; const d = debtors[dIdx];
+                        const transfer = Math.min(c.amt, d.amt);
+                        payments.push({ from: d.name, to: c.name, amount: Math.ceil(transfer) });
+                        c.amt -= transfer; d.amt -= transfer;
+                        if (c.amt <= 0.1) cIdx++; if (d.amt <= 0.1) dIdx++;
+                    }
+
+                    return { totalTwd, averagePerPerson, payments };
+                }, [splitExpenses, splitMembers]);
 
                 return (
                     <div className="p-4 pb-24 space-y-4">
-                        <h2 className="text-xl font-bold" style={{ color: COLORS.darkText }}>分帳與記帳結算中心</h2>
-                        
-                        {/* 成員管理區塊 */}
-                        <div className="bg-white p-4 rounded-xl shadow-sm border">
-                            <h3 className="text-xs font-bold mb-2 flex items-center gap-1" style={{color:COLORS.darkText}}><i className="fa-solid fa-users"></i> 同行分攤成員名單</h3>
-                            <div className="flex flex-wrap gap-1.5 mb-3">
+                        <div className="bg-white p-4 rounded-xl border shadow-sm">
+                            <h3 className="font-bold text-sm mb-3 flex items-center gap-1.5"><i className="fa-solid fa-users text-blue-500"></i> 分帳成員管理</h3>
+                            <div className="flex flex-wrap gap-2 mb-3">
                                 {splitMembers.map(m => (
-                                    <span key={m} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-slate-100 font-bold" style={{color:COLORS.darkText}}>
-                                        {m} <button onClick={()=>handleRemoveMember(m)} className="text-gray-400 hover:text-red-500"><i className="fa-solid fa-circle-xmark text-[13px]"></i></button>
+                                    <span key={m} className="text-xs bg-slate-100 font-medium px-2.5 py-1 rounded-lg text-gray-700 flex items-center gap-1">
+                                        {m} {splitMembers.length > 1 && <i className="fa-solid fa-circle-xmark text-gray-400 cursor-pointer hover:text-red-500" onClick={() => setSplitMembers(splitMembers.filter(x => x !== m))}></i>}
                                     </span>
                                 ))}
                             </div>
                             <div className="flex gap-2">
-                                <input type="text" placeholder="新成員名字..." className="flex-1 p-2 border rounded-lg text-xs" value={newMember} onChange={e=>setNewMember(e.target.value)} />
-                                <button onClick={handleAddMember} className="px-3 py-2 text-white font-bold rounded-lg text-xs" style={{backgroundColor: COLORS.mediumBlue}}><i className="fa-solid fa-plus"></i> 新增</button>
+                                <input type="text" placeholder="新成員名字..." className="flex-1 p-2 border rounded-lg text-sm" value={newMember} onChange={e => setNewMember(e.target.value)} />
+                                <button onClick={handleAddMember} className="px-4 py-2 rounded-lg text-white font-bold text-xs" style={{ backgroundColor: COLORS.mediumBlue }}>+ 新增</button>
                             </div>
                         </div>
 
-                        {/* 記帳統計看板 */}
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-xl p-4 shadow-sm">
-                                <span className="text-[10px] uppercase opacity-90">目前總花費計</span>
-                                <div className="text-2xl font-black mt-1">NT$ {totalTwdCost.toLocaleString()}</div>
-                                <span className="text-[9px] opacity-75">含手動及勾選購物</span>
+                        {/* 修改：頂部整合看板的色彩套用您的要求 */}
+                        <div className="rounded-xl border shadow-md overflow-hidden grid grid-cols-2 text-center" style={{ backgroundColor: '#795B7D' }}>
+                            <div className="p-4 border-r border-white/20">
+                                <span className="text-xs block text-white font-bold mb-1">目前總花費計</span>
+                                <span className="text-2xl font-black text-white">NT$ {splitResults.totalTwd.toLocaleString()}</span>
                             </div>
-                            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-xl p-4 shadow-sm">
-                                <span className="text-[10px] uppercase opacity-90">每人平均應付</span>
-                                <div className="text-2xl font-black mt-1">NT$ {avgTwdCost.toLocaleString()}</div>
-                                <span className="text-[9px] opacity-75">共 {splitMembers.length} 人平分帳目</span>
+                            <div className="p-4" style={{ backgroundColor: '#8BA3C5' }}>
+                                <span className="text-xs block text-white font-bold mb-1">每人平均應付</span>
+                                <span className="text-2xl font-black text-white">NT$ {splitResults.averagePerPerson.toLocaleString()}</span>
                             </div>
                         </div>
 
-                        {/* 手動記帳開關與表單 */}
-                        <div>
-                            <button onClick={() => setShowManualForm(!showManualForm)} className="w-full py-2.5 text-white font-bold rounded-lg text-xs shadow-sm flex items-center justify-center gap-1" style={{backgroundColor: showManualForm ? '#9ca3af' : COLORS.mediumBlue}}>
-                                <i className={`fa-solid ${showManualForm ? 'fa-xmark' : 'fa-plus'}`}></i> {showManualForm ? '取消手動新增' : '➕ 手動新增一筆消費帳目'}
-                            </button>
-
-                            {showManualForm && (
-                                <div className="bg-white p-4 rounded-xl border mt-3 shadow-md space-y-3">
-                                    <h4 className="text-xs font-bold border-b pb-1.5" style={{color: COLORS.darkText}}>手動記帳項目設定</h4>
-                                    <div>
-                                        <label className="text-[11px] font-bold block mb-1 text-gray-500">消費項目名稱</label>
-                                        <input type="text" placeholder="例如：計程車、晚餐車資、門票..." className="w-full p-2 border rounded-lg text-xs" value={manualExpense.name} onChange={e=>setManualExpense({...manualExpense, name: e.target.value})} />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div>
-                                            <label className="text-[11px] font-bold block mb-1 text-gray-500">外幣金額</label>
-                                            <input type="number" placeholder="請輸入金額" className="w-full p-2 border rounded-lg text-xs" value={manualExpense.amount} onChange={e=>setManualExpense({...manualExpense, amount: e.target.value})} />
-                                        </div>
-                                        <div>
-                                            <label className="text-[11px] font-bold block mb-1 text-gray-500">交易幣別</label>
-                                            <select className="w-full p-2 border rounded-lg bg-white text-xs" value={manualExpense.currencyCode} onChange={e=>setManualExpense({...manualExpense, currencyCode: e.target.value})}>
-                                                {CURRENCIES.map(c=><option key={c.code} value={c.code}>{c.code} ({c.symbol})</option>)}
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="text-[11px] font-bold block mb-1 text-gray-500">誰先代墊付款？</label>
-                                        <select className="w-full p-2 border rounded-lg bg-white text-xs" value={manualExpense.paidBy} onChange={e=>setManualExpense({...manualExpense, paidBy: e.target.value})}>
-                                            {splitMembers.map(m=><option key={m} value={m}>{m}</option>)}
-                                        </select>
-                                    </div>
-                                    <button onClick={handleAddManualExpense} className="w-full py-2 text-white font-bold rounded-lg text-xs bg-emerald-600"><i className="fa-solid fa-check"></i> 確定手動加入帳目庫</button>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* 消費帳目細項列表 */}
-                        <div className="bg-white p-4 rounded-xl shadow-sm border">
-                            <h3 className="text-xs font-bold mb-3 border-b pb-1.5 flex justify-between items-center" style={{color:COLORS.darkText}}>
-                                <span><i className="fa-solid fa-receipt"></i> 所有結算帳目清單 ({totalCalculatedExpenses.length}筆)</span>
-                                <span className="text-[10px] font-normal text-gray-400">點擊垃圾桶可移除手動帳目</span>
+                        <div className="bg-white p-4 rounded-xl border shadow-sm">
+                            <h3 className="font-bold text-sm mb-3 flex items-center gap-1.5">
+                                <i className="fa-solid fa-file-invoice-dollar text-indigo-500"></i> 
+                                {editingExpenseId ? '編輯手動記帳項目' : '手動分帳記帳'}
                             </h3>
-                            <div className="space-y-2 max-h-[220px] overflow-y-auto no-scrollbar">
-                                {totalCalculatedExpenses.map((item) => (
-                                    <div key={item.id} className="flex items-center justify-between text-xs p-2 bg-slate-50 rounded-lg border">
-                                        <div className="min-w-0 flex-1 pr-2">
-                                            <p className="font-bold truncate text-gray-800">{item.name}</p>
-                                            <p className="text-[10px] text-gray-400 mt-0.5">
-                                                <span className="font-bold text-slate-600">{item.paidBy}</span> 付款 · 
-                                                <span className="ml-1 bg-slate-200 px-1 py-0.2 rounded text-[9px]">{item.type === 'manual' ? '手動記帳' : '清單同步'}</span>
-                                            </p>
-                                        </div>
-                                        <div className="text-right flex items-center gap-2">
-                                            <div>
-                                                <p className="font-mono text-gray-600 font-bold">{CURRENCIES.find(c=>c.code===item.currencyCode)?.symbol}{item.amount}</p>
-                                                <p className="text-[10px] font-mono font-bold text-gray-400">NT${item.twdAmount}</p>
-                                            </div>
-                                            {item.type === 'manual' && (
-                                                <button onClick={()=>setSplitExpenses(splitExpenses.filter(x=>x.id!==item.id))} className="text-gray-300 hover:text-red-500 pl-1"><i className="fa-solid fa-trash-can"></i></button>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                                {totalCalculatedExpenses.length === 0 && (
-                                    <p className="text-center text-gray-400 py-6 text-[11px]">目前尚無任何花費帳目。請手動新增或到購物清單勾選已購買商品！</p>
+                            <div className="grid grid-cols-3 gap-2 mb-2">
+                                <input type="text" placeholder="消費項目內容..." className="col-span-2 p-2 border rounded-lg text-sm" value={title} onChange={e => setTitle(e.target.value)} />
+                                <select className="p-2 border rounded-lg bg-white text-sm" value={selectedCurrency} onChange={e => setSelectedCurrency(e.target.value)}>
+                                    {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+                                </select>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 mb-2">
+                                <input type="number" placeholder="消費金額..." className="p-2 border rounded-lg text-sm" value={amount} onChange={e => setAmount(e.target.value)} />
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-500 font-bold whitespace-nowrap">付款人:</span>
+                                    <select className="w-full p-2 border rounded-lg bg-white text-sm" value={paidBy} onChange={e => setPaidBy(e.target.value)}>
+                                        {splitMembers.map(m => <option key={m} value={m}>{m}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="mb-3 p-2 bg-slate-50 rounded-lg border border-dashed">
+                                <div className="flex justify-between items-center mb-1.5">
+                                    <span className="text-xs font-bold text-gray-600">更動自訂換算匯率 (1 TWD 等於多少外幣)</span>
+                                    <input type="checkbox" checked={isCustomRate} onChange={e => setIsCustomRate(e.target.checked)} className="w-3.5 h-3.5 rounded" />
+                                </div>
+                                <input type="number" step="0.0001" className="w-full p-1.5 border rounded bg-white text-xs" value={customRate} onChange={e => setCustomRate(e.target.value)} disabled={!isCustomRate} />
+                            </div>
+
+                            <div className="mb-4">
+                                <span className="text-xs font-bold block mb-1.5 text-gray-600">誰要分攤 (可複選):</span>
+                                <div className="flex flex-wrap gap-3 p-2 rounded-lg bg-gray-50 border">
+                                    {splitMembers.map(m => (
+                                        <label key={m} className="flex items-center gap-1.5 text-xs font-medium cursor-pointer text-gray-700">
+                                            <input type="checkbox" checked={!!shares[m]} onChange={e => setShares({...shares, [m]: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-0 border-gray-300" />
+                                            {m}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="flex gap-2">
+                                <button onClick={handleAddExpense} className="flex-1 py-2 rounded-lg text-white font-bold text-sm shadow-sm transition-all" style={{ backgroundColor: COLORS.mediumBlue }}>
+                                    {editingExpenseId ? '儲存修改' : '送出記帳'}
+                                </button>
+                                {editingExpenseId && (
+                                    <button onClick={handleCancelEdit} className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 font-bold text-sm shadow-sm">
+                                        取消
+                                    </button>
                                 )}
                             </div>
                         </div>
 
-                        {/* 最終分帳找零清單 */}
-                        <div className="bg-white p-4 rounded-xl shadow-sm border">
-                            <h3 className="text-xs font-bold mb-3 border-b pb-1.5" style={{color:COLORS.darkText}}><i className="fa-solid fa-calculator"></i> 成員收支平衡結算差額</h3>
-                            <div className="space-y-2.5">
-                                {Object.keys(balanceReport).map(name => {
-                                    const val = balanceReport[name];
-                                    const isOwed = val >= 0;
-                                    return (
-                                        <div key={name} className="flex justify-between items-center text-xs">
-                                            <span className="font-bold text-gray-700">{name}</span>
-                                            <span className={`font-mono font-bold px-2 py-0.5 rounded ${isOwed ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'}`}>
-                                                {isOwed ? `可拿回 +NT$${Math.ceil(val).toLocaleString()}` : `需補出 -NT$${Math.abs(Math.floor(val)).toLocaleString()}`}
-                                            </span>
+                        {splitResults.payments.length > 0 && (
+                            <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl shadow-sm">
+                                <h3 className="font-bold text-emerald-800 text-sm mb-2 flex items-center gap-1.5"><i className="fa-solid fa-comments-dollar"></i> 清算最佳化建議路徑</h3>
+                                <div className="space-y-1">
+                                    {splitResults.payments.map((p, idx) => (
+                                        <div key={idx} className="text-xs text-emerald-900 font-medium bg-white/60 p-2 rounded-md flex justify-between">
+                                            <span>👉 <strong>{p.from}</strong> 應支付給 <strong>{p.to}</strong></span>
+                                            <span className="font-bold text-orange-600">NT$ {p.amount.toLocaleString()}</span>
                                         </div>
-                                    );
-                                })}
+                                    ))}
+                                </div>
                             </div>
+                        )}
+
+                        <div className="bg-white rounded-xl border shadow-sm divide-y">
+                            <div className="p-3 bg-gray-50 rounded-t-xl"><span className="text-xs font-bold text-gray-600">已完成的手動記帳項目設定</span></div>
+                            {splitExpenses.map(exp => (
+                                <div key={exp.id} className="p-3.5 flex justify-between items-center gap-2">
+                                    <div className="text-xs text-gray-600 flex-1">
+                                        <p className="font-bold text-sm text-gray-800 mb-0.5">{exp.title}</p>
+                                        <p>付款人: <strong className="text-slate-700">{exp.paidBy}</strong> ｜ 原幣別金額: {exp.amount} ({exp.currencyCode})</p>
+                                        <p className="text-[11px] text-gray-400">分攤對象: {exp.mInvolved.join(', ')}</p>
+                                    </div>
+                                    <div className="text-right flex items-center gap-3">
+                                        <div>
+                                            <span className="text-xs font-black block text-gray-500">折合台幣</span>
+                                            <span className="text-sm font-black text-slate-800">NT$ {exp.twdAmount}</span>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            {/* 新增編輯按鈕 */}
+                                            <button onClick={() => handleEditExpense(exp)} className="text-gray-400 hover:text-blue-500 transition-colors p-1" title="編輯項目">
+                                                <i className="fa-solid fa-pen text-[14px]"></i>
+                                            </button>
+                                            <button onClick={() => setSplitExpenses(splitExpenses.filter(x => x.id !== exp.id))} className="text-gray-400 hover:text-red-500 transition-colors p-1" title="刪除項目">
+                                                <i className="fa-solid fa-trash-can text-[14px]"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            {splitExpenses.length === 0 && <p className="text-center text-gray-500 py-10 text-xs">尚無任何記帳紀錄。</p>}
                         </div>
                     </div>
                 );
             };
 
-            // --- 全域頂部與排行程通用彈窗 ---
+            // --- 介面渲染: 行前檢查清單 ---
+            const RenderPrepList = () => {
+                const [newTodo, setNewTodo] = useState('');
+                const handleAddTodo = () => { if (!newTodo.trim()) return; setPrepList([...prepList, { id: Date.now(), text: newTodo.trim(), checked: false }]); setNewTodo(''); showToast("成功加入檢查清單！"); };
+                const toggleTodo = (id) => setPrepList(prepList.map(t => t.id === id ? { ...t, checked: !t.checked } : t));
+                const deleteTodo = (id) => setPrepList(prepList.filter(t => t.id !== id));
+
+                return (
+                    <div className="p-4 pb-24">
+                        <h2 className="text-xl font-bold mb-1" style={{ color: COLORS.darkText }}>出國必備行前檢查</h2>
+                        <p className="text-xs text-gray-500 mb-4">打包行李與出發前的核心追蹤核對表。</p>
+                        
+                        <div className="flex gap-2 mb-4">
+                            <input type="text" placeholder="手動增加備忘項目..." className="flex-1 p-2 border rounded-lg text-sm bg-white" value={newTodo} onChange={e => setNewTodo(e.target.value)} />
+                            <button onClick={handleAddTodo} className="px-4 py-2 rounded-lg text-white font-bold text-xs" style={{ backgroundColor: COLORS.mediumBlue }}>+ 新增</button>
+                        </div>
+
+                        <div className="bg-white rounded-xl border shadow-sm divide-y">
+                            {prepList.map(todo => (
+                                <div key={todo.id} className="p-3 flex items-center justify-between gap-2">
+                                    <label className="flex items-center gap-3 flex-1 cursor-pointer">
+                                        <input type="checkbox" checked={todo.checked} onChange={() => toggleTodo(todo.id)} className="w-4 h-4 text-indigo-600 rounded focus:ring-0 border-gray-300" />
+                                        <span className={`text-sm ${todo.checked ? 'line-through text-gray-400 font-normal' : 'text-gray-700 font-medium'}`}>{todo.text}</span>
+                                    </label>
+                                    <button onClick={() => deleteTodo(todo.id)} className="text-gray-300 hover:text-red-500 transition-colors p-1"><i className="fa-solid fa-trash-can"></i></button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            };
+
+            // --- 介面渲染: 備份還原 ---
+            const RenderBackup = () => (
+                <div className="p-4 pb-24 space-y-4">
+                    <h2 className="text-xl font-bold mb-1" style={{ color: COLORS.darkText }}>資料備份與還原</h2>
+                    <p className="text-xs text-gray-500 mb-4">您的所有旅遊數據皆完整保存在此瀏覽器中。可匯出成 JSON 檔案跨裝置備份。</p>
+                    
+                    <div className="bg-white p-5 rounded-xl border shadow-sm space-y-4">
+                        <div>
+                            <h4 className="font-bold text-sm mb-1 text-gray-800">匯出本地完整數據備份</h4>
+                            <p className="text-xs text-gray-400 mb-3">包含完整行程、美食購物、計帳與所有分類設定。</p>
+                            <button onClick={handleExportData} className="w-full py-2.5 rounded-lg text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm" style={{ backgroundColor: COLORS.mediumBlue }}><i className="fa-solid fa-download"></i> 立即下載備份檔案 (.json)</button>
+                        </div>
+                        <hr />
+                        <div>
+                            <h4 className="font-bold text-sm mb-1 text-gray-800">匯入外部備份檔案</h4>
+                            <p className="text-xs text-gray-400 mb-3">注意：匯入將會完全覆蓋此瀏覽器當前的所有資料。</p>
+                            <label className="w-full py-2.5 rounded-lg bg-amber-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer hover:bg-amber-600 transition-colors">
+                                <i className="fa-solid fa-upload"></i> 選擇檔案並還原資料
+                                <input type="file" accept=".json" onChange={handleImportData} className="hidden" />
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            );
+
             return (
                 <div className="app-container">
-                    {/* 頂部 Header 區塊 */}
-                    <header className="p-4 flex items-center justify-between shadow-sm sticky top-0 z-50 bg-white border-b">
+                    {/* 頂部導覽列 */}
+                    <header className="p-4 border-b flex justify-between items-center bg-white shadow-sm sticky top-0 z-40">
                         <div className="flex items-center gap-2">
                             <span className="text-2xl">✈️</span>
                             <div>
-                                <h1 className="text-base font-black tracking-tight" style={{ color: COLORS.darkText }}>旅遊小幫手 2.0</h1>
-                                <p className="text-[10px] text-gray-400 -mt-0.5 font-bold">匯率天氣即時同步版</p>
+                                <h1 className="text-base font-black tracking-wide" style={{ color: COLORS.darkText }}>旅遊小幫手 2.0</h1>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Smart Travel Assistant</p>
                             </div>
                         </div>
-                        {/* 頂部匯率快速看板 */}
-                        <div className="text-right bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
-                            <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">即時基準匯率</p>
-                            <p className="text-xs font-mono font-black text-slate-700">1 TWD = {exchangeRate} {currency.code}</p>
+                        <div className="flex items-center gap-1 bg-gray-50 border p-1 rounded-lg">
+                            <select className="bg-transparent text-xs font-bold p-1 cursor-pointer" value={currency.code} onChange={(e) => handleCurrencyChange(e.target.value)}>
+                                {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} ({c.symbol})</option>)}
+                            </select>
+                            <span className="text-xs font-mono font-bold px-1.5 py-0.5 rounded bg-white border text-gray-600 shadow-sm">1 TWD = {exchangeRate}</span>
                         </div>
                     </header>
 
-                    {/* 中央主內容捲動區 */}
+                    {/* 主要內容顯示區 */}
                     <main className="content-area no-scrollbar">
                         {activeTab === 'dest' && <RenderDestination />}
                         {activeTab === 'list' && <RenderItinerary />}
                         {activeTab === 'must' && <RenderMustGo />}
                         {activeTab === 'shop' && <RenderShoppingList />}
-                        {activeTab === 'split' && <RenderSplitBill />}
-                        {activeTab === 'sett' && <RenderSettings />}
+                        {activeTab === 'bill' && <RenderSplitBill />}
+                        {activeTab === 'prep' && <RenderPrepList />}
+                        {activeTab === 'back' && <RenderBackup />}
                     </main>
 
-                    {/* 安排行程專用通用互動視窗 Modal */}
+                    {/* 精緻動態浮動 Toast 提示 */}
+                    {toastMessage && (
+                        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white font-medium text-xs px-4 py-2.5 rounded-xl shadow-xl z-50 backdrop-blur-sm border border-white/10 flex items-center gap-2 transition-all duration-300 animate-bounce">
+                            <i className="fa-solid fa-circle-info text-sky-400"></i> {toastMessage}
+                        </div>
+                    )}
+
+                    {/* 全域加入行程設定之浮動視窗 (Modal) */}
                     {addToItinModal.isOpen && (
-                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[999] backdrop-blur-xs">
-                            <div className="bg-white rounded-2xl p-5 w-full max-w-sm shadow-2xl border animate-in fade-in zoom-in-95 duration-150">
-                                <h3 className="font-bold mb-3 text-sm flex items-center gap-1" style={{color: COLORS.darkText}}><i className="fa-solid fa-calendar-plus text-emerald-600"></i> 將項目編排入每日行程</h3>
-                                <p className="text-xs text-gray-500 mb-3 bg-slate-50 p-2 rounded border">目標項目：{addToItinModal.item?.name || addToItinModal.item?.notes}</p>
-                                <div className="space-y-3">
-                                    <div>
-                                        <label className="text-[11px] font-bold block mb-1 text-gray-600">選擇天數</label>
-                                        <select className="w-full p-2 border rounded-lg bg-white text-xs" value={modalDayChoice} onChange={e=>setModalDayChoice(e.target.value)}>
-                                            {uniqueDays.map(d=><option key={d} value={d}>{d}</option>)}
-                                            <option value="__CUSTOM__">+ 新增其他天數...</option>
+                        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                            <div className="bg-white w-full max-w-sm rounded-2xl p-5 shadow-2xl border animate-in fade-in zoom-in-95 duration-200">
+                                <h3 className="font-bold text-sm mb-1 text-gray-800">📌 直接引流加入行程排程</h3>
+                                <p className="text-xs text-gray-400 mb-4">將此景點/商品設定特定天數時間以加入主行程中。</p>
+                                <div className="space-y-3 mb-5">
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-xs font-bold text-gray-600">選擇哪一天 (Day)</label>
+                                        <select className="p-2 border rounded-lg bg-white text-sm" value={modalDayChoice} onChange={e => setModalDayChoice(e.target.value)}>
+                                            {uniqueDays.map(d => <option key={d} value={d}>{d}</option>)}
+                                            <option value="__CUSTOM__">+ 手動建立新天數</option>
                                         </select>
                                     </div>
                                     {modalDayChoice === '__CUSTOM__' && (
-                                        <div>
-                                            <label className="text-[11px] font-bold block mb-1 text-gray-600">輸入自訂天數名稱</label>
-                                            <input type="text" placeholder="例如: Day 4" className="w-full p-2 border rounded-lg text-xs" value={modalCustomDay} onChange={e=>setModalCustomDay(e.target.value)} />
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-xs font-bold text-gray-600">手動輸入天數代碼</label>
+                                            <input type="text" placeholder="例如: Day 4" className="p-2 border rounded-lg text-sm bg-white" value={modalCustomDay} onChange={e => setModalCustomDay(e.target.value)} />
                                         </div>
                                     )}
-                                    <div>
-                                        <label className="text-[11px] font-bold block mb-1 text-gray-600">出發時間點</label>
-                                        <input type="time" className="w-full p-2 border rounded-lg text-xs" value={modalTime} onChange={e=>setModalTime(e.target.value)} />
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-xs font-bold text-gray-600">預計抵達/購買時間</label>
+                                        <input type="time" className="p-2 border rounded-lg text-sm bg-white" value={modalTime} onChange={e => setModalTime(e.target.value)} />
                                     </div>
-                                    <div className="flex gap-2 pt-2 border-t mt-4">
-                                        <button onClick={confirmAddToItinerary} className="flex-1 py-2 text-white font-bold text-xs rounded-lg shadow-sm" style={{backgroundColor: COLORS.mediumBlue}}>確認排入</button>
-                                        <button onClick={()=>setAddToItinModal({isOpen:false, item:null})} className="flex-1 py-2 bg-gray-100 text-gray-700 text-xs font-bold rounded-lg">取消離開</button>
-                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={confirmAddToItinerary} className="flex-1 py-2 rounded-xl text-white font-bold text-xs shadow-md" style={{ backgroundColor: COLORS.mediumBlue }}>確認加入行程表</button>
+                                    <button onClick={() => { setAddToItinModal({isOpen: false, item: null}); setModalCustomDay(''); }} className="px-4 py-2 rounded-xl bg-gray-100 text-gray-500 font-bold text-xs">取消</button>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* 全域 Toast 提示泡泡 */}
-                    {toastMessage && (
-                        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg z-[9999] flex items-center gap-1.5 animate-bounce">
-                            <i className="fa-solid fa-circle-check text-emerald-400"></i> {toastMessage}
-                        </div>
-                    )}
-
-                    {/* 底部導覽列 Tab Bar (原汁原味排版與圖示) */}
-                    <nav className="absolute bottom-0 left-0 right-0 h-16 bg-white border-t flex items-center justify-around z-50 px-2">
-                        <button onClick={()=>setActiveTab('dest')} className={`flex flex-col items-center gap-0.5 ${activeTab==='dest'?'font-black':'text-gray-400'}`} style={{color:activeTab==='dest'?COLORS.mediumBlue:''}}><i className="fa-solid fa-map-location-dot text-base"></i><span className="text-[9px]">目的地</span></button>
-                        <button onClick={()=>setActiveTab('list')} className={`flex flex-col items-center gap-0.5 ${activeTab==='list'?'font-black':'text-gray-400'}`} style={{color:activeTab==='list'?COLORS.mediumBlue:''}}><i className="fa-solid fa-calendar-days text-base"></i><span className="text-[9px]">行程規劃</span></button>
-                        <button onClick={()=>setActiveTab('must')} className={`flex flex-col items-center gap-0.5 ${activeTab==='must'?'font-black':'text-gray-400'}`} style={{color:activeTab==='must'?COLORS.mediumBlue:''}}><i className="fa-solid fa-heart text-base"></i><span className="text-[9px]">必去必買</span></button>
-                        <button onClick={()=>setActiveTab('shop')} className={`flex flex-col items-center gap-0.5 ${activeTab==='shop'?'font-black':'text-gray-400'}`} style={{color:activeTab==='shop'?COLORS.mediumBlue:''}}><i className="fa-solid fa-cart-shopping text-base"></i><span className="text-[9px]">購物計算</span></button>
-                        <button onClick={()=>setActiveTab('split')} className={`flex flex-col items-center gap-0.5 ${activeTab==='split'?'font-black':'text-gray-400'}`} style={{color:activeTab==='split'?COLORS.mediumBlue:''}}><i className="fa-solid fa-coins text-base"></i><span className="text-[9px]">記帳結算</span></button>
-                        <button onClick={()=>setActiveTab('sett')} className={`flex flex-col items-center gap-0.5 ${activeTab==='sett'?'font-black':'text-gray-400'}`} style={{color:activeTab==='sett'?COLORS.mediumBlue:''}}><i className="fa-solid fa-clipboard-list text-base"></i><span className="text-[9px]">檢查清單</span></button>
+                    {/* 底部導航欄 */}
+                    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-xl max-w-[480px] margin-0-auto z-40 flex justify-around p-2.5">
+                        <button onClick={() => setActiveTab('dest')} className={`flex flex-col items-center gap-1 text-[10px] font-bold transition-all ${activeTab === 'dest' ? 'scale-105' : 'opacity-50'}`} style={{ color: activeTab === 'dest' ? COLORS.mediumBlue : COLORS.darkText }}><i className="fa-solid fa-map text-base"></i>目的地</button>
+                        <button onClick={() => setActiveTab('list')} className={`flex flex-col items-center gap-1 text-[10px] font-bold transition-all ${activeTab === 'list' ? 'scale-105' : 'opacity-50'}`} style={{ color: activeTab === 'list' ? COLORS.mediumBlue : COLORS.darkText }}><i className="fa-solid fa-route text-base"></i>行程表</button>
+                        <button onClick={() => setActiveTab('must')} className={`flex flex-col items-center gap-1 text-[10px] font-bold transition-all ${activeTab === 'must' ? 'scale-105' : 'opacity-50'}`} style={{ color: activeTab === 'must' ? COLORS.mediumBlue : COLORS.darkText }}><i className="fa-solid fa-heart text-base"></i>必去買</button>
+                        <button onClick={() => setActiveTab('shop')} className={`flex flex-col items-center gap-1 text-[10px] font-bold transition-all ${activeTab === 'shop' ? 'scale-105' : 'opacity-50'}`} style={{ color: activeTab === 'shop' ? COLORS.mediumBlue : COLORS.darkText }}><i className="fa-solid fa-cart-shopping text-base"></i>購物車</button>
+                        <button onClick={() => setActiveTab('bill')} className={`flex flex-col items-center gap-1 text-[10px] font-bold transition-all ${activeTab === 'bill' ? 'scale-105' : 'opacity-50'}`} style={{ color: activeTab === 'bill' ? COLORS.mediumBlue : COLORS.darkText }}><i className="fa-solid fa-comments-dollar text-base"></i>分帳</button>
+                        <button onClick={() => setActiveTab('prep')} className={`flex flex-col items-center gap-1 text-[10px] font-bold transition-all ${activeTab === 'prep' ? 'scale-105' : 'opacity-50'}`} style={{ color: activeTab === 'prep' ? COLORS.mediumBlue : COLORS.darkText }}><i className="fa-solid fa-list-check text-base"></i>檢查表</button>
+                        <button onClick={() => setActiveTab('back')} className={`flex flex-col items-center gap-1 text-[10px] font-bold transition-all ${activeTab === 'back' ? 'scale-105' : 'opacity-50'}`} style={{ color: activeTab === 'back' ? COLORS.mediumBlue : COLORS.darkText }}><i className="fa-solid fa-cloud-arrow-down text-base"></i>備份</button>
                     </nav>
                 </div>
             );
         };
 
-        // 啟動 React 渲染流程
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
