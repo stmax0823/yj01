@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>✈️ 旅遊小幫手５.0 </title>
-    <meta name="apple-mobile-web-app-title" content="旅遊小幫手５.0">
+    <title>✈️ 旅遊小幫手2.0</title>
+    <meta name="apple-mobile-web-app-title" content="旅遊小幫手2.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
     
     <!-- Tailwind CSS -->
@@ -46,7 +46,7 @@
             { code: 'TWD', symbol: 'NT$', name: '台幣', defaultRate: 1 }
         ];
 
-        // 擴充對應英文名稱，用來查國際天氣天氣
+        // 供天氣 API 對照英文城市名稱
         const CITY_MAP_EN = { '首爾': 'Seoul', '釜山': 'Busan', '東京': 'Tokyo', '大阪': 'Osaka', '曼谷': 'Bangkok', '清邁': 'Chiang+Mai', '台北': 'Taipei', '台中': 'Taichung' };
 
         const INITIAL_DESTINATIONS = {
@@ -150,8 +150,9 @@
             const [foodTypes, setFoodTypes] = useState(() => JSON.parse(localStorage.getItem('app_food_types_v6')) || INITIAL_FOOD_TYPES);
             const [itemTypes, setItemTypes] = useState(() => JSON.parse(localStorage.getItem('app_item_types_v6')) || INITIAL_ITEM_TYPES);
 
-            // 🌦️ 天氣專用狀態
+            // 🌦️ 即時天氣與即時匯率專用狀態
             const [weatherData, setWeatherData] = useState({ temp: '--', desc: '載入中...', loading: false });
+            const [rateLoading, setRateLoading] = useState(false);
 
             // 自動存檔
             useEffect(() => {
@@ -171,31 +172,80 @@
                 localStorage.setItem('app_item_types_v6', JSON.stringify(itemTypes));
             }, [destinations, currentTrip, currency, exchangeRate, itinerary, stores, foodTypes, itemTypes, mustEats, mustBuys, shoppingList, splitMembers, splitExpenses, prepList]);
 
-            // 🌍 即時免費天氣抓取邏輯 (wttr.in API)
+            // 🌍 【自動化】即時天氣 API 串接邏輯
             useEffect(() => {
                 if (!currentTrip.city) return;
                 const cityEn = CITY_MAP_EN[currentTrip.city] || currentTrip.city;
-                setWeatherData(prev => ({ ...prev, loading: true, desc: '更新天氣中...' }));
+                setWeatherData(prev => ({ ...prev, loading: true, desc: '更新中...' }));
 
                 fetch(`https://wttr.in/${cityEn}?format=j1`)
                     .then(res => res.json())
                     .then(data => {
                         const current = data.current_condition[0];
-                        setWeatherData({
-                            temp: current.temp_C + '°C',
-                            desc: current.lang_zh ? current.lang_zh[0].value : current.weatherDesc[0].value,
-                            loading: false
-                        });
+                        const weatherDesc = current.lang_zh && current.lang_zh[0] ? current.lang_zh[0].value : (current.weatherDesc && current.weatherDesc[0] ? current.weatherDesc[0].value : '晴朗');
+                        setWeatherData({ temp: current.temp_C + '°C', desc: weatherDesc, loading: false });
                     })
                     .catch(() => {
-                        setWeatherData({ temp: 'N/A', desc: '暫時無法取得天氣', loading: false });
+                        setWeatherData({ temp: 'N/A', desc: '天氣載入失敗', loading: false });
                     });
             }, [currentTrip.city]);
 
+            // 💰 【自動化】即時匯率 API 串接邏輯 (基於 TWD 兌換外幣)
+            const fetchRealTimeRate = (targetCurrencyCode) => {
+                if (targetCurrencyCode === 'TWD') {
+                    setExchangeRate(1);
+                    return;
+                }
+                setRateLoading(true);
+                fetch(`https://open.er-api.com/v6/latest/TWD`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.rates && data.rates[targetCurrencyCode]) {
+                            const liveRate = data.rates[targetCurrencyCode];
+                            setExchangeRate(Number(liveRate.toFixed(4)));
+                            showToast(`💱 匯率已更新至最新即時數據！`);
+                        }
+                        setRateLoading(false);
+                    })
+                    .catch(() => {
+                        setRateLoading(false);
+                        showToast(`⚠️ 匯率伺服器連線失敗，維持原設定。`);
+                    });
+            };
+
+            // 當切換外幣選擇時，自動觸發抓新匯率
             const handleCurrencyChange = (code) => {
                 const newCur = CURRENCIES.find(c => c.code === code);
-                if (newCur) { setCurrency(newCur); setExchangeRate(newCur.defaultRate); }
+                if (newCur) { 
+                    setCurrency(newCur); 
+                    fetchRealTimeRate(code);
+                }
             };
+
+            // 當切換國家時，自動變更預設外幣並自動撈即時匯率
+            const handleCountryChange = (v) => {
+                setCurrentTrip({country: v, city: ''}); 
+                const c = CURRENCIES.find(x => 
+                    v === '韓國' && x.code === 'KRW' || 
+                    v === '日本' && x.code === 'JPY' || 
+                    v === '泰國' && x.code === 'THB' || 
+                    v === '台灣' && x.code === 'TWD'
+                ); 
+                if (c) {
+                    setCurrency(c);
+                    fetchRealTimeRate(c.code);
+                }
+            };
+
+            // 提供上方資訊板卡的手動刷新按鈕
+            const triggerManualRefreshRate = () => {
+                fetchRealTimeRate(currency.code);
+            };
+
+            // 網頁首次初始化時，自動根據當前幣別載入一次即時匯率
+            useEffect(() => {
+                fetchRealTimeRate(currency.code);
+            }, []);
 
             const handleExportData = () => {
                 const dataToSave = { destinations, currentTrip, currency, exchangeRate, stores, foodTypes, itemTypes, itinerary, mustEats, mustBuys, shoppingList, splitMembers, splitExpenses, prepList };
@@ -237,9 +287,10 @@
                 event.target.value = null; 
             };
 
-            // --- 頁面 1: 目的地與環境設定 (整合免費天氣) ---
+            // --- 頁面 1: 目的地與環境設定 ---
             const RenderDestination = () => (
                 <div className="p-4 space-y-6">
+                    {/* 上方頂級卡片區：完美融入即時天氣與聯網即時匯率數據 */}
                     <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden mt-2">
                         <i className="fa-solid fa-cloud-sun-rain absolute -right-4 -bottom-4 opacity-20 text-[100px]"></i>
                         <h2 className="text-xl font-bold mb-2 flex items-center gap-2"><i className="fa-solid fa-earth-americas text-[22px]"></i> 本次旅程環境</h2>
@@ -253,7 +304,6 @@
                                 <span className="text-xs opacity-70">主要城市</span>
                                 <div className="text-xl font-black truncate">{currentTrip.city || '未設定'}</div>
                             </div>
-                            {/* 🌦️ 新增的免金鑰即時天氣看板 */}
                             <div className="border-l border-white/20 pl-2">
                                 <span className="text-xs opacity-70">當地即時天氣</span>
                                 <div className="text-sm font-black text-amber-300 flex items-center gap-1">
@@ -264,7 +314,14 @@
                         </div>
                         
                         <div className="mt-4 pt-3 border-t border-white/20 flex justify-between items-center text-xs">
-                            <span>即時匯率設定：1 台幣 = {exchangeRate} {currency.code}</span>
+                            <span className="flex items-center gap-1">
+                                聯網即時匯率：1 TWD = {rateLoading ? '更新中...' : `${exchangeRate} ${currency.code}`}
+                            </span>
+                            {currency.code !== 'TWD' && (
+                                <button onClick={triggerManualRefreshRate} className="bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded text-[10px] flex items-center gap-1">
+                                    <i className={`fa-solid fa-rotate ${rateLoading ? 'animate-spin' : ''}`}></i> 刷新匯率
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -272,7 +329,7 @@
                         <h3 className="font-bold mb-4 flex items-center gap-2 text-slate-700">
                             <i className="fa-solid fa-sliders text-indigo-500"></i> 基本參數變更
                         </h3>
-                        <CreatableSelect label="選擇/新增國家" options={Object.keys(destinations)} value={currentTrip.country} onChange={(v) => { setCurrentTrip({country: v, city: ''}); const c = CURRENCIES.find(x => v==='韓國'&&x.code==='KRW' || v==='日本'&&x.code==='JPY' || v==='泰國'&&x.code==='THB' || v==='台灣'&&x.code==='TWD'); if(c) handleCurrencyChange(c.code); }} onAddOption={(newOpt) => { setDestinations({...destinations, [newOpt]: {}}); setStores({...stores, [newOpt]: []}); }} />
+                        <CreatableSelect label="選擇/新增國家" options={Object.keys(destinations)} value={currentTrip.country} onChange={handleCountryChange} onAddOption={(newOpt) => { setDestinations({...destinations, [newOpt]: {}}); setStores({...stores, [newOpt]: []}); }} />
                         <CreatableSelect label="選擇/新增城市" options={currentTrip.country ? Object.keys(destinations[currentTrip.country] || {}) : []} value={currentTrip.city} onChange={(v) => setCurrentTrip({...currentTrip, city: v})} onAddOption={(newOpt) => setDestinations({...destinations, [currentTrip.country]: {...(destinations[currentTrip.country]||{}), [newOpt]: []}})} />
                         
                         <div className="grid grid-cols-2 gap-2 mt-2">
@@ -283,8 +340,8 @@
                                 </select>
                             </div>
                             <div className="flex flex-col gap-1">
-                                <label className="text-xs font-bold text-gray-600">台幣換算匯率</label>
-                                <input type="number" step="any" className="p-2 border rounded-lg text-sm" value={exchangeRate} onChange={(e) => setExchangeRate(Number(e.target.value))} />
+                                <label className="text-xs font-bold text-gray-600">台幣換算匯率 (可手動覆蓋)</label>
+                                <input type="number" step="any" className="p-2 border rounded-lg text-sm bg-amber-50/50" value={exchangeRate} onChange={(e) => setExchangeRate(Number(e.target.value))} />
                             </div>
                         </div>
                     </div>
