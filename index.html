@@ -773,7 +773,8 @@ useEffect(() => {
                                             <span className="text-green-600 font-bold">{t.to}</span>
                                             <span className="font-bold text-indigo-600">NT$ {t.amt.toLocaleString()}</span>
                                         </div>
-                                    ))}
+                                    ))
+                                    }
                                     {settlements?.transactions?.length === 0 && <p className="text-xs text-gray-500 text-center py-2">大家互不相欠！🎉</p>}
                                 </div>
                             )}
