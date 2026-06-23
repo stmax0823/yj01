@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>✈️ 旅遊小幫手2.0 全功能完整版</title>
+    <title>✈️ 旅遊小幫手５.0 </title>
     <meta name="apple-mobile-web-app-title" content="旅遊小幫手2.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
     
@@ -45,6 +45,9 @@
             { code: 'CNY', symbol: '¥', name: '人民幣', defaultRate: 0.22 }, 
             { code: 'TWD', symbol: 'NT$', name: '台幣', defaultRate: 1 }
         ];
+
+        // 擴充對應英文名稱，用來查國際天氣天氣
+        const CITY_MAP_EN = { '首爾': 'Seoul', '釜山': 'Busan', '東京': 'Tokyo', '大阪': 'Osaka', '曼谷': 'Bangkok', '清邁': 'Chiang+Mai', '台北': 'Taipei', '台中': 'Taichung' };
 
         const INITIAL_DESTINATIONS = {
             '韓國': { '首爾': ['明洞', '弘大', '聖水洞', '江南', '東大門'], '釜山': ['西面', '南浦洞', '海雲台'] },
@@ -96,7 +99,6 @@
             };
         };
 
-        // 自訂可新增選項的下拉選單
         const CreatableSelect = ({ label, options = [], value, onChange, onAddOption, placeholder = "請選擇..." }) => {
             const [isAdding, setIsAdding] = useState(false);
             const [newValue, setNewValue] = useState('');
@@ -148,6 +150,9 @@
             const [foodTypes, setFoodTypes] = useState(() => JSON.parse(localStorage.getItem('app_food_types_v6')) || INITIAL_FOOD_TYPES);
             const [itemTypes, setItemTypes] = useState(() => JSON.parse(localStorage.getItem('app_item_types_v6')) || INITIAL_ITEM_TYPES);
 
+            // 🌦️ 天氣專用狀態
+            const [weatherData, setWeatherData] = useState({ temp: '--', desc: '載入中...', loading: false });
+
             // 自動存檔
             useEffect(() => {
                 localStorage.setItem('app_destinations_v6', JSON.stringify(destinations));
@@ -165,6 +170,27 @@
                 localStorage.setItem('app_food_types_v6', JSON.stringify(foodTypes));
                 localStorage.setItem('app_item_types_v6', JSON.stringify(itemTypes));
             }, [destinations, currentTrip, currency, exchangeRate, itinerary, stores, foodTypes, itemTypes, mustEats, mustBuys, shoppingList, splitMembers, splitExpenses, prepList]);
+
+            // 🌍 即時免費天氣抓取邏輯 (wttr.in API)
+            useEffect(() => {
+                if (!currentTrip.city) return;
+                const cityEn = CITY_MAP_EN[currentTrip.city] || currentTrip.city;
+                setWeatherData(prev => ({ ...prev, loading: true, desc: '更新天氣中...' }));
+
+                fetch(`https://wttr.in/${cityEn}?format=j1`)
+                    .then(res => res.json())
+                    .then(data => {
+                        const current = data.current_condition[0];
+                        setWeatherData({
+                            temp: current.temp_C + '°C',
+                            desc: current.lang_zh ? current.lang_zh[0].value : current.weatherDesc[0].value,
+                            loading: false
+                        });
+                    })
+                    .catch(() => {
+                        setWeatherData({ temp: 'N/A', desc: '暫時無法取得天氣', loading: false });
+                    });
+            }, [currentTrip.city]);
 
             const handleCurrencyChange = (code) => {
                 const newCur = CURRENCIES.find(c => c.code === code);
@@ -211,22 +237,32 @@
                 event.target.value = null; 
             };
 
-            // --- 頁面 1: 目的地設定 ---
+            // --- 頁面 1: 目的地與環境設定 (整合免費天氣) ---
             const RenderDestination = () => (
                 <div className="p-4 space-y-6">
                     <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden mt-2">
-                        <i className="fa-solid fa-plane-departure absolute -right-6 -bottom-6 opacity-20 text-[100px]"></i>
+                        <i className="fa-solid fa-cloud-sun-rain absolute -right-4 -bottom-4 opacity-20 text-[100px]"></i>
                         <h2 className="text-xl font-bold mb-2 flex items-center gap-2"><i className="fa-solid fa-earth-americas text-[22px]"></i> 本次旅程環境</h2>
-                        <div className="mt-4 grid grid-cols-2 gap-2">
+                        
+                        <div className="mt-4 grid grid-cols-3 gap-2">
                             <div>
                                 <span className="text-xs opacity-70">國家地區</span>
-                                <div className="text-2xl font-black">{currentTrip.country || '未設定'}</div>
+                                <div className="text-xl font-black truncate">{currentTrip.country || '未設定'}</div>
                             </div>
                             <div>
                                 <span className="text-xs opacity-70">主要城市</span>
-                                <div className="text-2xl font-black">{currentTrip.city || '未設定'}</div>
+                                <div className="text-xl font-black truncate">{currentTrip.city || '未設定'}</div>
+                            </div>
+                            {/* 🌦️ 新增的免金鑰即時天氣看板 */}
+                            <div className="border-l border-white/20 pl-2">
+                                <span className="text-xs opacity-70">當地即時天氣</span>
+                                <div className="text-sm font-black text-amber-300 flex items-center gap-1">
+                                    <span>{weatherData.temp}</span>
+                                </div>
+                                <div className="text-[10px] opacity-90 truncate">{weatherData.desc}</div>
                             </div>
                         </div>
+                        
                         <div className="mt-4 pt-3 border-t border-white/20 flex justify-between items-center text-xs">
                             <span>即時匯率設定：1 台幣 = {exchangeRate} {currency.code}</span>
                         </div>
@@ -320,7 +356,7 @@
                 );
             };
 
-            // --- 頁面 3: 必去必買 (含相片) ---
+            // --- 頁面 3: 必去必買 ---
             const RenderMustGo = () => {
                 const [showForm, setShowForm] = useState(false);
                 const [eatForm, setEatForm] = useState({ name: '', district: '', type: '', url: '', image: '' });
@@ -409,7 +445,7 @@
                 );
             };
 
-            // --- 頁面 4: 代購與記帳代買 ---
+            // --- 頁面 4: 代購記帳 ---
             const RenderShoppingList = () => {
                 const [form, setForm] = useState({ buyer: '自己', name: '', store: '', price: '', count: 1, checked: false });
                 
@@ -476,7 +512,7 @@
                 );
             };
 
-            // --- 頁面 5: 共同拆帳與記帳 ---
+            // --- 頁面 5: 共同拆帳 ---
             const RenderSplitBill = () => {
                 const [expense, setExpense] = useState({ title: '', amount: '', payer: '自己', type: '均分' });
 
@@ -502,7 +538,6 @@
                             <div className="text-2xl font-black text-emerald-400">{currency.symbol} {totalExpense.toLocaleString()}</div>
                         </div>
 
-                        {/* 記開銷表單 */}
                         <div className="bg-white p-4 rounded-xl border space-y-2 mb-4">
                             <h3 className="text-xs font-bold text-slate-700">💰 記一筆共同開銷</h3>
                             <input type="text" placeholder="開銷項目 (如: 晚餐、計程車)" className="w-full p-2 border rounded-lg text-sm" value={expense.title} onChange={e => setExpense({...expense, title: e.target.value})} />
@@ -515,7 +550,6 @@
                             <button onClick={() => { if(!expense.title || !expense.amount) return; setSplitExpenses([...splitExpenses, {...expense, id: Date.now()}]); setExpense({title:'',amount:'',payer:'自己',type:'均分'}); }} className="w-full py-2 bg-indigo-600 text-white rounded-lg font-bold text-xs">新增此筆</button>
                         </div>
 
-                        {/* 拆帳結算報表 */}
                         <div className="bg-white p-4 rounded-xl border mb-4">
                             <h4 className="text-xs font-bold text-slate-700 mb-2">📊 目前拆帳結算狀態</h4>
                             <div className="space-y-1">
@@ -530,7 +564,6 @@
                             </div>
                         </div>
 
-                        {/* 明細清單 */}
                         <div className="space-y-2">
                             {splitExpenses.map(e => (
                                 <div key={e.id} className="p-3 bg-white border rounded-lg flex justify-between items-center text-xs shadow-sm">
@@ -549,7 +582,7 @@
                 );
             };
 
-            // --- 頁面 6: 行李與事前準備清單 ---
+            // --- 頁面 6: 行李清單 ---
             const RenderPreparation = () => {
                 const [newTodo, setNewTodo] = useState('');
                 const handleAdd = () => {
@@ -598,7 +631,6 @@
                         </div>
                     )}
 
-                    {/* 滾動式底部導覽選單列 */}
                     <div className="absolute bottom-0 left-0 right-0 h-[72px] bg-white border-t border-gray-200 grid grid-cols-6 items-center z-40 text-center">
                         <button onClick={() => setActiveTab('destination')} className={`flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold ${activeTab === 'destination' ? 'text-indigo-600' : 'text-gray-400'}`}>
                             <i className="fa-solid fa-earth-asia text-[16px]"></i>環境設定
