@@ -2,664 +2,195 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>✈️ 旅遊小幫手2.0</title>
-    <meta name="apple-mobile-web-app-title" content="旅遊小幫手2.0">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>AI 智能旅遊規劃小幫手</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <style>
-        body { margin: 0; padding: 0; background-color: #F0ECDD; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent;}
-        .app-container { max-w: 480px; margin: 0 auto; background-color: #F0ECDD; min-height: 100vh; position: relative; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; }
-        .content-area { flex: 1; overflow-y: auto; padding-bottom: 80px; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        input, select, textarea { outline: none; }
-        input:focus, select:focus, textarea:focus { border-color: #8BA3C5; }
-    </style>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body>
+<body class="bg-slate-50 text-slate-800 font-sans">
+
     <div id="root"></div>
 
-    <script type="text/babel" data-presets="react,env">
-        const { useState, useMemo, useEffect } = React;
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-        // --- 常數設定 ---
-        const COLORS = { bg: '#F0ECDD', lightBlue: '#8BA3C5', mediumBlue: '#495B7D', darkText: '#23354D', white: '#FFFFFF' };
-        
-        const CURRENCIES = [
-            { code: 'KRW', symbol: '₩', name: '韓元', defaultRate: 42 },    
-            { code: 'JPY', symbol: '¥', name: '日圓', defaultRate: 4.7 },   
-            { code: 'USD', symbol: '$', name: '美金', defaultRate: 0.031 }, 
-            { code: 'EUR', symbol: '€', name: '歐元', defaultRate: 0.029 }, 
-            { code: 'THB', symbol: '฿', name: '泰銖', defaultRate: 1.12 },  
-            { code: 'CNY', symbol: '¥', name: '人民幣', defaultRate: 0.22 }, 
-            { code: 'TWD', symbol: 'NT$', name: '台幣', defaultRate: 1 }
-        ];
-
-        // 各大城市經緯度對照表 (用於 Open-Meteo API 天氣抓取)
-        const CITY_COORDINATES = {
-            '首爾': { lat: 37.5665, lon: 126.9780 },
-            '釜山': { lat: 35.1796, lon: 129.0756 },
-            '東京': { lat: 35.6762, lon: 139.6503 },
-            '大阪': { lat: 34.6937, lon: 135.5023 },
-            '曼谷': { lat: 13.7563, lon: 100.5018 },
-            '清邁': { lat: 18.7883, lon: 98.9853 },
-            '台北': { lat: 25.0330, lon: 121.5654 },
-            '台中': { lat: 24.1477, lon: 120.6736 }
+        // 模擬天氣數據
+        const mockWeatherData = {
+            "台北": { temp: "26°C", condition: "多雲時晴", icon: "cloud-sun", advice: "適合戶外活動，帶把傘備用。" },
+            "東京": { temp: "15°C", condition: "陣雨", icon: "cloud-rain", advice: "氣溫偏低且有雨，出門記得攜帶雨具並注意保暖。" },
+            "京都": { temp: "16°C", condition: "陰天", icon: "cloud", advice: "體感稍涼，建議穿著薄外套。" },
+            "大阪": { temp: "18°C", condition: "晴天", icon: "sun", advice: "天氣晴朗舒適，非常適合環球影城行程！" },
+            "首爾": { temp: "12°C", condition: "晴時多雲", icon: "cloud-sun", advice: "早晚溫差大，建議採用洋蔥式穿法。" }
         };
 
-        const INITIAL_DESTINATIONS = {
-            '韓國': { '首爾': ['明洞', '弘大', '聖水洞', '江南', '東大門'], '釜山': ['西面', '南浦洞', '海雲台'] },
-            '日本': { '東京': ['新宿', '澀谷', '銀座', '淺草', '原宿'], '大阪': ['梅田', '難波', '心齋橋'] },
-            '泰國': { '曼谷': ['素坤逸', '暹羅', '洽圖洽'], '清邁': ['尼曼路', '古城區'] },
-            '台灣': { '台北': ['信義區', '大安區', '中山區'], '台中': ['西屯區', '西區'] }
-        };
-        const INITIAL_STORES = {
-            '韓國': ['Olive Young', '大創 (Daiso)', '樂天超市', 'TAMBURINS', 'Mardi Mercredi'],
-            '日本': ['Don Quijote (唐吉訶德)', '松本清', 'Bic Camera', 'LOFT'],
-            '泰國': ['Big C', 'Boots', '7-11', 'NaRaYa'],
-            '台灣': ['寶雅', '康是美', '家樂福', '新光三越']
-        };
-        const INITIAL_FOOD_TYPES = ['在地小吃', '人氣餐廳', '咖啡廳', '甜點', '酒吧'];
-        const INITIAL_ITEM_TYPES = ['化妝品', '保養品', '服飾', '零食', '伴手禮', '免稅精品'];
-
-        const DEFAULT_PREP_LIST = [
-            { id: 1, text: '護照 (確認效期 > 6個月) & 簽證', checked: false },
-            { id: 2, text: '外幣現金 & 信用卡 (確認海外回饋與開通)', checked: false },
-            { id: 3, text: '當地網卡 / eSIM / 電信漫遊設定', checked: false },
-            { id: 4, text: '萬用轉接頭 & 行動電源、充電線', checked: false },
-            { id: 5, text: '隨身常備藥 (感冒、腸胃、暈車、止痛)', checked: false },
-            { id: 6, text: '個人盥洗用品 / 保養品 / 防曬', checked: false },
-            { id: 7, text: '機票與住宿憑證 (建議存一份截圖)', checked: false },
-            { id: 8, text: '摺疊環保袋 (購物備用)', checked: false },
-            { id: 9, text: '輕便雨具 / 摺疊傘', checked: false },
-            { id: 10, text: '旅遊平安險 / 不便險憑證', checked: false }
-        ];
-
-        const getWmoWeather = (code) => {
-            if ([0].includes(code)) return { text: '晴朗', icon: 'fa-sun text-yellow-300' };
-            if ([1, 2, 3].includes(code)) return { text: '多雲時晴', icon: 'fa-cloud-sun text-blue-200' };
-            if ([45, 48].includes(code)) return { text: '有霧', icon: 'fa-smog text-gray-300' };
-            if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return { text: '陣雨/下雨', icon: 'fa-cloud-showers-heavy text-blue-300' };
-            if ([71, 73, 75, 77, 85, 86].includes(code)) return { text: '下雪', icon: 'fa-snowflake text-indigo-100' };
-            if ([95, 96, 99].includes(code)) return { text: '雷陣雨', icon: 'fa-cloud-bolt text-yellow-400' };
-            return { text: '未知陰晴', icon: 'fa-cloud text-gray-300' };
+        // 模擬景點推薦數據
+        const mockAttractions = {
+            "台北": ["台北 101", "故宮博物院", "士林夜市", "陽明山國家公園"],
+            "東京": ["淺草寺", "東京鐵塔", "澀谷十字路口", "東京迪士尼樂園"],
+            "京都": ["清水寺", "伏見稻荷大社", "金閣寺", "嵐山竹林"],
+            "大阪": ["大阪城", "道頓堀", "日本環球影城", "心齋橋"],
+            "首爾": ["景福宮", "明洞商圈", "N首爾塔", "北村韓屋村"]
         };
 
-        const getTwdEquivalent = (amount, currencyCode, rate) => {
-            if (!amount || isNaN(amount)) return null;
-            if (currencyCode === 'TWD') return Math.ceil(Number(amount));
-            return Math.ceil(Number(amount) / rate);
-        };
+        function App() {
+            const [city, setCity] = useState("東京");
+            const [weather, setWeather] = useState(mockWeatherData["東京"]);
+            const [attractions, setAttractions] = useState(mockAttractions["東京"]);
+            const [itinerary, setItinerary] = useState([]);
+            const [newLocation, setNewLocation] = useState("");
 
-        const compressImage = (file, callback) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = (event) => {
-                const img = new Image();
-                img.src = event.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 400; 
-                    const scaleSize = MAX_WIDTH / img.width;
-                    canvas.width = MAX_WIDTH;
-                    canvas.height = img.height * scaleSize;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    callback(canvas.toDataURL('image/jpeg', 0.6));
-                };
-            };
-        };
-
-        const CreatableSelect = ({ label, options, value, onChange, onAddOption, placeholder = "請選擇..." }) => {
-            const [isAdding, setIsAdding] = useState(false);
-            const [newValue, setNewValue] = useState('');
-            const handleSave = () => { if (newValue.trim()) { onAddOption(newValue.trim()); onChange(newValue.trim()); } setIsAdding(false); setNewValue(''); };
-
-            if (isAdding) {
-                return (
-                    <div className="flex flex-col gap-1 mb-3">
-                        <label className="text-xs font-bold" style={{ color: COLORS.darkText }}>{label} (自訂新增)</label>
-                        <div className="flex gap-2">
-                            <input type="text" className="flex-1 p-2 rounded-lg border text-sm" value={newValue} onChange={(e) => setNewValue(e.target.value)} autoFocus />
-                            <button onClick={handleSave} className="p-2 rounded-lg text-white" style={{ backgroundColor: COLORS.mediumBlue }}><i className="fa-solid fa-check"></i></button>
-                            <button onClick={() => setIsAdding(false)} className="p-2 rounded-lg bg-gray-300 text-gray-700"><i className="fa-solid fa-xmark"></i></button>
-                        </div>
-                    </div>
-                );
-            }
-            return (
-                <div className="flex flex-col gap-1 mb-3">
-                    <label className="text-xs font-bold" style={{ color: COLORS.darkText }}>{label}</label>
-                    <select className="p-2 rounded-lg border bg-white text-sm" style={{ color: COLORS.darkText }} value={value} onChange={(e) => { if (e.target.value === '__ADD_NEW__') setIsAdding(true); else onChange(e.target.value); }}>
-                        <option value="" disabled>{placeholder}</option>
-                        {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                        <option value="__ADD_NEW__" style={{ color: COLORS.mediumBlue, fontWeight: 'bold' }}>+ 手動輸入新選項</option>
-                    </select>
-                </div>
-            );
-        };
-
-        const App = () => {
-            const [activeTab, setActiveTab] = useState('list'); 
-            const [toastMessage, setToastMessage] = useState('');
-            const showToast = (message) => { setToastMessage(message); setTimeout(() => setToastMessage(''), 2500); };
-
-            // 即時天氣狀態
-            const [weatherData, setWeatherData] = useState({ temp: null, text: '', icon: '', loading: false });
-
-            // 💾 狀態初始化 (嚴格鎖定 LocalStorage，並加上版號避免與舊資料衝突)
-            const [destinations, setDestinations] = useState(() => JSON.parse(localStorage.getItem('app_destinations_v6')) || INITIAL_DESTINATIONS);
-            const [currentTrip, setCurrentTrip] = useState(() => JSON.parse(localStorage.getItem('app_current_trip_v6')) || { country: '韓國', city: '首爾' });
-            const [currency, setCurrency] = useState(() => JSON.parse(localStorage.getItem('app_currency_v6')) || CURRENCIES[0]);
-            const [exchangeRate, setExchangeRate] = useState(() => Number(localStorage.getItem('app_exchange_rate_v6')) || CURRENCIES[0].defaultRate);
-            const [itinerary, setItinerary] = useState(() => JSON.parse(localStorage.getItem('app_itinerary_v6')) || []);
-            const [stores, setStores] = useState(() => JSON.parse(localStorage.getItem('app_stores_v6')) || INITIAL_STORES);
-            const [mustEats, setMustEats] = useState(() => JSON.parse(localStorage.getItem('app_must_eats_v6')) || []);
-            const [mustBuys, setMustBuys] = useState(() => JSON.parse(localStorage.getItem('app_must_buys_v6')) || []);
-            const [shoppingList, setShoppingList] = useState(() => JSON.parse(localStorage.getItem('app_shopping_list_v6')) || []);
-            const [splitMembers, setSplitMembers] = useState(() => JSON.parse(localStorage.getItem('app_split_members_v6')) || ['自己', '朋友A']);
-            const [splitExpenses, setSplitExpenses] = useState(() => JSON.parse(localStorage.getItem('app_split_expenses_v6')) || []);
-            const [prepList, setPrepList] = useState(() => JSON.parse(localStorage.getItem('app_prep_list_v6')) || DEFAULT_PREP_LIST);
-            const [mustGoType, setMustGoType] = useState('eat');
-            const [foodTypes, setFoodTypes] = useState(() => JSON.parse(localStorage.getItem('app_food_types_v6')) || INITIAL_FOOD_TYPES);
-            const [itemTypes, setItemTypes] = useState(() => JSON.parse(localStorage.getItem('app_item_types_v6')) || INITIAL_ITEM_TYPES);
-
-            // 當城市改變時，自動調用即時天氣 API
+            // 當切換城市時，自動更新天氣與景點
             useEffect(() => {
-                if (!currentTrip.city || !CITY_COORDINATES[currentTrip.city]) {
-                    setWeatherData({ temp: null, text: '無天氣資料', icon: 'fa-cloud-question', loading: false });
-                    return;
+                if (mockWeatherData[city]) {
+                    setWeather(mockWeatherData[city]);
+                    setAttractions(mockAttractions[city]);
                 }
+            }, [city]);
 
-                const fetchWeather = async () => {
-                    setWeatherData(prev => ({ ...prev, loading: true }));
-                    const { lat, lon } = CITY_COORDINATES[currentTrip.city];
-                    try {
-                        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=auto`);
-                        const data = await res.json();
-                        if (data && data.current_weather) {
-                            const wmo = getWmoWeather(data.current_weather.weathercode);
-                            setWeatherData({
-                                temp: Math.round(data.current_weather.temperature),
-                                text: wmo.text,
-                                icon: wmo.icon,
-                                loading: false
-                            });
-                        }
-                    } catch (error) {
-                        console.error("天氣獲取失敗", error);
-                        setWeatherData(prev => ({ ...prev, loading: false }));
-                    }
-                };
-
-                fetchWeather();
-            }, [currentTrip.city]);
-
-            // 自動存檔機制
-            useEffect(() => {
-                localStorage.setItem('app_destinations_v6', JSON.stringify(destinations));
-                localStorage.setItem('app_current_trip_v6', JSON.stringify(currentTrip));
-                localStorage.setItem('app_currency_v6', JSON.stringify(currency));
-                localStorage.setItem('app_exchange_rate_v6', String(exchangeRate));
-                localStorage.setItem('app_itinerary_v6', JSON.stringify(itinerary));
-                localStorage.setItem('app_stores_v6', JSON.stringify(stores));
-                localStorage.setItem('app_must_eats_v6', JSON.stringify(mustEats));
-                localStorage.setItem('app_must_buys_v6', JSON.stringify(mustBuys));
-                localStorage.setItem('app_shopping_list_v6', JSON.stringify(shoppingList));
-                localStorage.setItem('app_split_members_v6', JSON.stringify(splitMembers));
-                localStorage.setItem('app_split_expenses_v6', JSON.stringify(splitExpenses));
-                localStorage.setItem('app_prep_list_v6', JSON.stringify(prepList));
-                localStorage.setItem('app_food_types_v6', JSON.stringify(foodTypes));
-                localStorage.setItem('app_item_types_v6', JSON.stringify(itemTypes));
-            }, [destinations, currentTrip, currency, exchangeRate, itinerary, stores, foodTypes, itemTypes, mustEats, mustBuys, shoppingList, splitMembers, splitExpenses, prepList]);
-
-            const handleCurrencyChange = (code) => {
-                const newCur = CURRENCIES.find(c => c.code === code);
-                if (newCur) { setCurrency(newCur); setExchangeRate(newCur.defaultRate); }
+            // 處理手動新增行程景點
+            const handleAddItinerary = (e) => {
+                e.preventDefault();
+                if (!newLocation.trim()) return;
+                setItinerary([...itinerary, { id: Date.now(), text: newLocation.trim() }]);
+                setNewLocation("");
             };
 
-            // 行程 Modal
-            const [addToItinModal, setAddToItinModal] = useState({ isOpen: false, item: null });
-            const [modalDayChoice, setModalDayChoice] = useState('Day 1');
-            const [modalCustomDay, setModalCustomDay] = useState('');
-            const [modalTime, setModalTime] = useState('12:00');
-
-            const uniqueDays = useMemo(() => {
-                const days = Array.from(new Set(itinerary.map(i => i.day)));
-                return days.length > 0 ? days.sort() : ['Day 1'];
-            }, [itinerary]);
-
-            const confirmAddToItinerary = () => {
-                const finalDay = modalDayChoice === '__CUSTOM__' ? modalCustomDay : modalDayChoice;
-                if (!finalDay) return;
-                setItinerary([...itinerary, {
-                    id: Date.now(), day: finalDay, time: modalTime,
-                    title: addToItinModal.item?.name || addToItinModal.item?.notes || '未命名行程',
-                    address: addToItinModal.item?.address || '', mapUrl: addToItinModal.item?.url || '', transport: ''
-                }].sort((a, b) => a.day !== b.day ? a.day.localeCompare(b.day) : a.time.localeCompare(b.time)));
-                setAddToItinModal({ isOpen: false, item: null }); setModalCustomDay('');
-                showToast("成功安排至行程中！");
+            // 刪除行程中的景點
+            const handleDeleteItinerary = (id) => {
+                setItinerary(itinerary.filter(item => item.id !== id));
             };
-
-            const handleExportData = () => {
-                const dataToSave = { destinations, currentTrip, currency, exchangeRate, stores, foodTypes, itemTypes, itinerary, mustEats, mustBuys, shoppingList, splitMembers, splitExpenses, prepList };
-                const blob = new Blob([JSON.stringify(dataToSave, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `旅遊小幫手2.0_備份檔_${currentTrip.country}_${new Date().toISOString().slice(0,10)}.json`;
-                link.click();
-                URL.revokeObjectURL(url);
-                showToast("備份檔已下載！");
-            };
-
-            const handleImportData = (event) => {
-                const file = event.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        const d = JSON.parse(e.target.result);
-                        if (d.destinations) setDestinations(d.destinations);
-                        if (d.currentTrip) setCurrentTrip(d.currentTrip);
-                        if (d.currency) setCurrency(d.currency);
-                        if (d.exchangeRate) setExchangeRate(d.exchangeRate);
-                        if (d.stores) setStores(d.stores);
-                        if (d.itinerary) setItinerary(d.itinerary);
-                        if (d.foodTypes) setFoodTypes(d.foodTypes);
-                        if (d.itemTypes) setItemTypes(d.itemTypes);
-                        if (d.mustEats) setMustEats(d.mustEats);
-                        if (d.mustBuys) setMustBuys(d.mustBuys);
-                        if (d.shoppingList) setShoppingList(d.shoppingList);
-                        if (d.splitMembers) setSplitMembers(d.splitMembers);
-                        if (d.splitExpenses) setSplitExpenses(d.splitExpenses);
-                        if (d.prepList) setPrepList(d.prepList);
-                        showToast("🎉 資料匯入成功！");
-                    } catch (err) { showToast("備份檔資料損毀！"); }
-                };
-                reader.readAsText(file);
-                event.target.value = null; 
-            };
-
-            // ==========================================
-            // 各頁面渲染元件
-            // ==========================================
-
-            // --- 介面渲染: 目的地 ---
-            const RenderDestination = () => (
-                <div className="p-4 pb-24 space-y-6">
-                    <div className="bg-gradient-to-br from-blue-400 to-indigo-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden mt-2 flex justify-between items-center">
-                        <i className="fa-solid fa-plane-departure absolute -right-6 -bottom-6 opacity-20 text-[100px]"></i>
-                        <div>
-                            <h2 className="text-xl font-bold mb-2 flex items-center gap-2"><i className="fa-solid fa-earth-americas text-[22px]"></i> 本次旅程</h2>
-                            <div className="mt-4">
-                                <span className="text-sm opacity-90">目的地國家</span>
-                                <div className="text-4xl font-black mb-1">{currentTrip.country || '尚未設定'}</div>
-                                <span className="text-sm opacity-90">主要城市</span>
-                                <div className="text-2xl font-bold">{currentTrip.city || '尚未設定'}</div>
-                            </div>
-                        </div>
-
-                        {/* 右側：即時天氣模組 */}
-                        {currentTrip.city && (
-                            <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 flex flex-col items-center justify-center border border-white/20 min-w-[90px] z-10 text-center">
-                                <span className="text-[10px] uppercase tracking-wider font-bold opacity-80">即時天氣</span>
-                                {weatherData.loading ? (
-                                    <div className="my-2 animate-spin text-lg"><i className="fa-solid fa-circle-notch"></i></div>
-                                ) : weatherData.temp !== null ? (
-                                    <>
-                                        <i className={`fa-solid ${weatherData.icon} text-2xl my-1.5 drop-shadow`}></i>
-                                        <span className="text-xl font-black">{weatherData.temp}°C</span>
-                                        <span className="text-[10px] opacity-90 font-medium">{weatherData.text}</span>
-                                    </>
-                                ) : (
-                                    <span className="text-[11px] opacity-70 my-2">未支援自訂</span>
-                                )}
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-                        <h3 className="font-bold mb-4 flex items-center gap-2" style={{ color: COLORS.darkText }}>
-                            <i className="fa-solid fa-location-dot text-[18px]" style={{color: COLORS.mediumBlue}}></i> 設定目的地
-                        </h3>
-                        <p className="text-xs text-gray-500 mb-4">設定後將作為您清單的預設地點。資料已啟動自動儲存！</p>
-                        <CreatableSelect label="旅遊國家" options={Object.keys(destinations)} value={currentTrip.country} onChange={(v) => { setCurrentTrip({country: v, city: ''}); const c = CURRENCIES.find(x => ['KRW','JPY','USD','THB','TWD','CNY'].includes(x.code) && (v==='韓國'&&x.code==='KRW' || v==='日本'&&x.code==='JPY' || v==='美國'&&x.code==='USD' || v==='泰國'&&x.code==='THB' || v==='台灣'&&x.code==='TWD' || v==='中國'&&x.code==='CNY')); if(c) handleCurrencyChange(c.code); }} onAddOption={(newOpt) => { setDestinations({...destinations, [newOpt]: {}}); setStores({...stores, [newOpt]: []}); }} placeholder="選擇國家..." />
-                        <div className={`${!currentTrip.country ? 'opacity-50 pointer-events-none' : ''}`}>
-                            <CreatableSelect label="地區 / 城市" options={currentTrip.country ? Object.keys(destinations[currentTrip.country] || {}) : []} value={currentTrip.city} onChange={(v) => setCurrentTrip({...currentTrip, city: v})} onAddOption={(newOpt) => setDestinations({...destinations, [currentTrip.country]: {...(destinations[currentTrip.country]||{}), [newOpt]: []}})} placeholder={currentTrip.country ? "選擇城市..." : "請先選擇國家"} />
-                        </div>
-                    </div>
-                </div>
-            );
-
-            // --- 介面渲染: 行程 ---
-            const RenderItinerary = () => {
-                const [showAddForm, setShowAddForm] = useState(false);
-                const [newItem, setNewItem] = useState({ day: uniqueDays[0] || 'Day 1', time: '10:00', title: '', address: '', transport: '', mapUrl: '' });
-                const [editingId, setEditingId] = useState(null);
-                const [editItem, setEditItem] = useState(null);
-
-                const handleAdd = () => {
-                    if (!newItem.title) return;
-                    setItinerary([...itinerary, { ...newItem, id: Date.now() }].sort((a, b) => a.day !== b.day ? a.day.localeCompare(b.day) : a.time.localeCompare(b.time)));
-                    setNewItem({ day: newItem.day, time: '10:00', title: '', address: '', transport: '', mapUrl: '' });
-                    setShowAddForm(false); showToast("新增行程成功！");
-                };
-
-                const handleSaveEdit = () => {
-                    if (!editItem.title) return;
-                    setItinerary(itinerary.map(i => i.id === editingId ? editItem : i).sort((a, b) => a.day !== b.day ? a.day.localeCompare(b.day) : a.time.localeCompare(b.time)));
-                    setEditingId(null); setEditItem(null); showToast("修改完成！");
-                };
-
-                return (
-                    <div className="p-4 pb-24">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-bold" style={{ color: COLORS.darkText }}>我的行程規劃</h2>
-                            <button onClick={() => { setShowAddForm(!showAddForm); setEditingId(null); }} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-bold text-white shadow-sm" style={{ backgroundColor: COLORS.mediumBlue }}>
-                                {showAddForm ? '取消新增' : <><i className="fa-solid fa-plus text-[14px]"></i> 新增行程</>}
-                            </button>
-                        </div>
-                        {showAddForm && (
-                            <div className="p-4 mb-6 rounded-lg shadow-sm bg-white border" style={{ border: `1px solid ${COLORS.lightBlue}` }}>
-                                <h3 className="font-bold mb-3 text-sm">新增行程節點</h3>
-                                <div className="grid grid-cols-2 gap-2 mb-2">
-                                    <input type="text" placeholder="天數 (例: Day 1)" className="p-2 border rounded-lg text-sm" value={newItem.day} onChange={e => setNewItem({...newItem, day: e.target.value})} />
-                                    <input type="time" className="p-2 border rounded-lg text-sm" value={newItem.time} onChange={e => setNewItem({...newItem, time: e.target.value})} />
-                                </div>
-                                <input type="text" placeholder="行程標題 (必填)" className="w-full p-2 border rounded-lg text-sm mb-2" value={newItem.title} onChange={e => setNewItem({...newItem, title: e.target.value})} />
-                                <input type="text" placeholder="詳細地址 (選填)" className="w-full p-2 border rounded-lg text-sm mb-2" value={newItem.address} onChange={e => setNewItem({...newItem, address: e.target.value})} />
-                                <input type="text" placeholder="自訂地圖網址" className="w-full p-2 border rounded-lg text-sm mb-2" value={newItem.mapUrl} onChange={e => setNewItem({...newItem, mapUrl: e.target.value})} />
-                                <input type="text" placeholder="交通方式" className="w-full p-2 border rounded-lg text-sm mb-3" value={newItem.transport} onChange={e => setNewItem({...newItem, transport: e.target.value})} />
-                                <button onClick={handleAdd} className="w-full py-2 rounded-lg text-white font-bold text-sm" style={{ backgroundColor: COLORS.mediumBlue }}>儲存行程</button>
-                            </div>
-                        )}
-                        <div className="space-y-4">
-                            {itinerary.map((item) => (
-                                <div key={item.id} className="p-4 rounded-xl shadow-sm bg-white border-l-4" style={{ borderColor: COLORS.mediumBlue }}>
-                                    {editingId === item.id ? (
-                                        <div className="flex flex-col gap-2">
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <input type="text" className="p-2 border rounded-lg text-sm" value={editItem.day} onChange={e => setEditItem({...editItem, day: e.target.value})} />
-                                                <input type="time" className="p-2 border rounded-lg text-sm" value={editItem.time} onChange={e => setEditItem({...editItem, time: e.target.value})} />
-                                            </div>
-                                            <input type="text" placeholder="標題" className="w-full p-2 border rounded-lg text-sm" value={editItem.title} onChange={e => setEditItem({...editItem, title: e.target.value})} />
-                                            <input type="text" placeholder="地址" className="w-full p-2 border rounded-lg text-sm" value={editItem.address} onChange={e => setEditItem({...editItem, address: e.target.value})} />
-                                            <input type="text" placeholder="交通" className="w-full p-2 border rounded-lg text-sm" value={editItem.transport} onChange={e => setEditItem({...editItem, transport: e.target.value})} />
-                                            <div className="flex gap-2 mt-2">
-                                                <button onClick={handleSaveEdit} className="flex-1 py-2 rounded-lg text-white font-bold text-xs" style={{ backgroundColor: COLORS.mediumBlue }}>儲存</button>
-                                                <button onClick={() => setEditingId(null)} className="flex-1 py-2 rounded-lg bg-gray-200 text-gray-700 font-bold text-xs">取消</button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <span className="text-xs font-bold px-2 py-1 rounded-full mr-2" style={{ backgroundColor: COLORS.bg, color: COLORS.darkText }}>{item.day}</span>
-                                                    <span className="font-bold text-sm" style={{ color: COLORS.darkText }}>{item.time} {item.title}</span>
-                                                </div>
-                                                <div className="flex gap-3">
-                                                    <button onClick={() => { setEditingId(item.id); setEditItem(item); setShowAddForm(false); }} className="text-gray-400"><i className="fa-solid fa-pen text-[14px]"></i></button>
-                                                    <button onClick={() => setItinerary(itinerary.filter(i => i.id !== item.id))} className="text-gray-400"><i className="fa-solid fa-trash text-[14px]"></i></button>
-                                                </div>
-                                            </div>
-                                            {(item.address || item.mapUrl) && (
-                                                <div className="mt-3 flex items-start gap-2 text-xs text-gray-600">
-                                                    <i className="fa-solid fa-location-dot mt-0.5" style={{ color: COLORS.lightBlue }}></i>
-                                                    <div className="flex-1">
-                                                        {item.address && <p className={item.mapUrl ? "mb-2" : ""}>{item.address}</p>}
-                                                        <div className="flex flex-wrap gap-2 mt-1">
-                                                            {item.mapUrl && <a href={item.mapUrl} target="_blank" rel="noreferrer" className="text-[10px] flex items-center gap-1 font-bold px-2.5 py-1 rounded-md shadow-sm text-white" style={{ backgroundColor: COLORS.mediumBlue }}><i className="fa-solid fa-link"></i> 開啟地圖</a>}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {item.transport && (
-                                                <div className="mt-2 flex items-start gap-2 text-xs text-gray-600">
-                                                    <i className="fa-solid fa-location-arrow mt-0.5" style={{ color: COLORS.lightBlue }}></i>
-                                                    <p>{item.transport}</p>
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
-                                </div>
-                            ))}
-                            {itinerary.length === 0 && <p className="text-center text-gray-500 mt-10 text-xs">尚無行程，從上方新增吧！</p>}
-                        </div>
-                    </div>
-                );
-            };
-
-            // --- 介面渲染: 必去必買 ---
-            const RenderMustGo = () => {
-                const [showForm, setShowForm] = useState(false);
-                const [eatForm, setEatForm] = useState({ url: '', name: '', country: currentTrip.country, city: currentTrip.city, district: '', type: '', cost: '', currency: '', image: '' });
-                const [buyForm, setBuyForm] = useState({ url: '', country: currentTrip.country, store: '', type: '', cost: '', notes: '', currency: '', image: '' });
-
-                const handleImageUpload = (e, formType) => {
-                    const file = e.target.files[0];
-                    if (!file) return;
-                    compressImage(file, (base64Img) => {
-                        if (formType === 'eat') setEatForm({ ...eatForm, image: base64Img });
-                        else setBuyForm({ ...buyForm, image: base64Img });
-                    });
-                };
-
-                const handleAddEat = () => {
-                    setMustEats([...mustEats, { ...eatForm, currency: eatForm.currency || currency.code, id: Date.now() }]);
-                    setEatForm({ url: '', name: '', country: currentTrip.country, city: currentTrip.city, district: '', type: '', cost: '', currency: '', image: '' });
-                    setShowForm(false); showToast("新增美食成功！");
-                };
-
-                const handleAddBuy = () => {
-                    setMustBuys([...mustBuys, { ...buyForm, currency: buyForm.currency || currency.code, id: Date.now() }]);
-                    setBuyForm({ url: '', country: currentTrip.country, store: '', type: '', cost: '', notes: '', currency: '', image: '' });
-                    setShowForm(false); showToast("新增商品成功！");
-                };
-
-                return (
-                    <div className="p-4 pb-24">
-                        <div className="flex rounded-lg overflow-hidden mb-4 border" style={{ borderColor: COLORS.mediumBlue }}>
-                            <button className={`flex-1 py-2 font-bold text-xs ${mustGoType === 'eat' ? 'text-white' : ''}`} style={{ backgroundColor: mustGoType === 'eat' ? COLORS.mediumBlue : 'transparent', color: mustGoType === 'eat' ? '#fff' : COLORS.darkText }} onClick={() => setMustGoType('eat')}>🍽️ 必吃美食</button>
-                            <button className={`flex-1 py-2 font-bold text-xs ${mustGoType === 'buy' ? 'text-white' : ''}`} style={{ backgroundColor: mustGoType === 'buy' ? COLORS.mediumBlue : 'transparent', color: mustGoType === 'buy' ? '#fff' : COLORS.darkText }} onClick={() => setMustGoType('buy')}>🛍️ 必買清單</button>
-                        </div>
-                        <button onClick={() => setShowForm(!showForm)} className="w-full flex justify-center items-center gap-2 py-3 rounded-lg font-bold mb-6 shadow-sm text-xs" style={{ backgroundColor: COLORS.lightBlue, color: COLORS.darkText }}>
-                            {showForm ? '取消新增' : <><i className="fa-solid fa-plus text-[16px]"></i> 新增 {mustGoType === 'eat' ? '必吃' : '必買'}</>}
-                        </button>
-                        
-                        {showForm && mustGoType === 'eat' && (
-                            <div className="bg-white p-4 rounded-xl shadow mb-6 border" style={{ borderColor: COLORS.mediumBlue }}>
-                                <div className="mb-4">
-                                    <label className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed bg-slate-50 cursor-pointer" style={{ borderColor: COLORS.lightBlue }}>
-                                        {eatForm.image ? (
-                                            <div className="relative w-full">
-                                                <img src={eatForm.image} alt="preview" className="w-full h-32 object-cover rounded-lg" />
-                                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded-lg text-white font-bold text-xs"><i className="fa-solid fa-camera mr-1"></i> 更換照片</div>
-                                            </div>
-                                        ) : (
-                                            <div className="flex flex-col items-center text-gray-500 text-xs">
-                                                <i className="fa-solid fa-camera text-xl mb-1"></i> 上傳美食圖片
-                                            </div>
-                                        )}
-                                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'eat')} />
-                                    </label>
-                                </div>
-                                <input type="text" placeholder="美食店名" className="w-full p-2 border rounded-lg text-sm mb-2" value={eatForm.name} onChange={e => setEatForm({...eatForm, name: e.target.value})} />
-                                <input type="text" placeholder="自訂地圖連結 (選填)" className="w-full p-2 border rounded-lg text-sm mb-2" value={eatForm.url} onChange={e => setEatForm({...eatForm, url: e.target.value})} />
-                                <div className="grid grid-cols-2 gap-2 mb-2">
-                                    <input type="text" placeholder="預估消費金額" className="p-2 border rounded-lg text-sm" value={eatForm.cost} onChange={e => setEatForm({...eatForm, cost: e.target.value})} />
-                                    <select className="p-2 border rounded-lg bg-white text-sm" value={eatForm.currency} onChange={e => setEatForm({...eatForm, currency: e.target.value})}>
-                                        {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} ({c.symbol})</option>)}
-                                    </select>
-                                </div>
-                                <button onClick={handleAddEat} className="w-full py-2 rounded-lg text-white font-bold text-sm" style={{ backgroundColor: COLORS.mediumBlue }}>加入口袋清單</button>
-                            </div>
-                        )}
-
-                        {showForm && mustGoType === 'buy' && (
-                            <div className="bg-white p-4 rounded-xl shadow mb-6 border" style={{ borderColor: COLORS.mediumBlue }}>
-                                <div className="mb-4">
-                                    <label className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed bg-slate-50 cursor-pointer" style={{ borderColor: COLORS.lightBlue }}>
-                                        {buyForm.image ? (
-                                            <div className="relative w-full">
-                                                <img src={buyForm.image} alt="preview" className="w-full h-32 object-cover rounded-lg" />
-                                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded-lg text-white font-bold text-xs"><i className="fa-solid fa-camera mr-1"></i> 更換照片</div>
-                                            </div>
-                                        ) : (
-                                            <div className="flex flex-col items-center text-gray-500 text-xs">
-                                                <i className="fa-solid fa-camera text-xl mb-1"></i> 上傳商品圖片
-                                            </div>
-                                        )}
-                                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'buy')} />
-                                    </label>
-                                </div>
-                                <input type="text" placeholder="想買的商品名稱或備註" className="w-full p-2 border rounded-lg text-sm mb-2" value={buyForm.notes} onChange={e => setBuyForm({...buyForm, notes: e.target.value})} />
-                                <CreatableSelect label="推薦購買商店" options={stores[currentTrip.country] || []} value={buyForm.store} onChange={(v) => setBuyForm({...buyForm, store: v})} onAddOption={(n) => setStores({...stores, [currentTrip.country]: [...(stores[currentTrip.country]||[]), n]})} placeholder="選擇或新增商店..." />
-                                <div className="grid grid-cols-2 gap-2 mb-3">
-                                    <input type="text" placeholder="商品價格" className="p-2 border rounded-lg text-sm" value={buyForm.cost} onChange={e => setBuyForm({...buyForm, cost: e.target.value})} />
-                                    <select className="p-2 border rounded-lg bg-white text-sm" value={buyForm.currency} onChange={e => setBuyForm({...buyForm, currency: e.target.value})}>
-                                        {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} ({c.symbol})</option>)}
-                                    </select>
-                                </div>
-                                <button onClick={handleAddBuy} className="w-full py-2 rounded-lg text-white font-bold text-sm" style={{ backgroundColor: COLORS.mediumBlue }}>加入購物慾望單</button>
-                            </div>
-                        )}
-
-                        {/* 清單卡片顯示區 */}
-                        <div className="grid grid-cols-2 gap-3">
-                            {mustGoType === 'eat' ? mustEats.map(item => (
-                                <div key={item.id} className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 flex flex-col relative">
-                                    <button onClick={() => setMustEats(mustEats.filter(x => x.id !== item.id))} className="absolute top-1 right-1 bg-black/50 text-white w-6 h-6 rounded-full text-xs z-10"><i className="fa-solid fa-trash"></i></button>
-                                    <img src={item.image || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400'} alt="eat" className="w-full h-24 object-cover" />
-                                    <div className="p-3 flex-1 flex flex-col justify-between">
-                                        <div>
-                                            <h4 className="font-bold text-xs text-gray-800 line-clamp-1">{item.name}</h4>
-                                            <span className="text-[10px] text-gray-400 block mt-0.5">{item.city || item.country}</span>
-                                        </div>
-                                        <div className="mt-2 flex justify-between items-center">
-                                            <span className="text-xs font-black text-indigo-600">{item.cost ? `${item.currency} ${item.cost}` : '尚未填價'}</span>
-                                            <button onClick={() => setAddToItinModal({ isOpen: true, item })} className="w-6 h-6 rounded-md text-[10px] text-white flex items-center justify-center" style={{ backgroundColor: COLORS.mediumBlue }}><i className="fa-solid fa-calendar-plus"></i></button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )) : mustBuys.map(item => (
-                                <div key={item.id} className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 flex flex-col relative">
-                                    <button onClick={() => setMustBuys(mustBuys.filter(x => x.id !== item.id))} className="absolute top-1 right-1 bg-black/50 text-white w-6 h-6 rounded-full text-xs z-10"><i className="fa-solid fa-trash"></i></button>
-                                    <img src={item.image || 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=400'} alt="buy" className="w-full h-24 object-cover" />
-                                    <div className="p-3 flex-1 flex flex-col justify-between">
-                                        <div>
-                                            <h4 className="font-bold text-xs text-gray-800 line-clamp-1">{item.notes || '自訂商品'}</h4>
-                                            <span className="text-[10px] text-gray-400 block mt-0.5"><i className="fa-solid fa-store mr-0.5"></i>{item.store || '未分類商店'}</span>
-                                        </div>
-                                        <div className="mt-2 flex justify-between items-center">
-                                            <span className="text-xs font-black text-indigo-600">{item.cost ? `${item.currency} ${item.cost}` : '尚未填價'}</span>
-                                            <button onClick={() => setAddToItinModal({ isOpen: true, item })} className="w-6 h-6 rounded-md text-[10px] text-white flex items-center justify-center" style={{ backgroundColor: COLORS.mediumBlue }}><i className="fa-solid fa-calendar-plus"></i></button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                );
-            };
-
-            // 為了不影響你其餘分頁的功能，這邊提供基礎的其他分頁容器佔位
-            const RenderPlaceholder = (title) => (
-                <div className="p-10 text-center text-gray-500 text-xs">
-                    <p>這裡是【{title}】分頁</p>
-                    <p className="mt-2 text-[11px] opacity-75">如需對此頁面進行特定擴充，隨時告訴我！</p>
-                </div>
-            );
 
             return (
-                <div className="app-container">
-                    {/* 頂部功能條 */}
-                    <div className="flex justify-between items-center px-4 py-3 bg-white border-b sticky top-0 z-50 shadow-sm">
-                        <span className="font-black text-sm tracking-wide" style={{ color: COLORS.darkText }}>✈️ 旅遊小幫手 2.0</span>
-                        <div className="flex gap-2 text-xs">
-                            <button onClick={handleExportData} className="px-2.5 py-1 rounded-md text-white font-bold bg-gray-500"><i className="fa-solid fa-download mr-1"></i>備份</button>
-                            <label className="px-2.5 py-1 rounded-md text-white font-bold cursor-pointer bg-slate-600">
-                                <i className="fa-solid fa-upload mr-1"></i>匯入
-                                <input type="file" accept=".json" className="hidden" onChange={handleImportData} />
-                            </label>
-                        </div>
+                <div class="max-w-4xl mx-auto p-4 md:p-8">
+                    {/* 頁首標題 */}
+                    <header class="text-center mb-8">
+                        <h1 class="text-3xl font-bold text-indigo-600 flex justify-center items-center gap-2">
+                            🧭 AI 智能旅遊規劃小幫手
+                        </h1>
+                        <p class="text-slate-500 mt-2">一鍵掌握即時天氣、推薦景點，輕鬆打造你的專屬行程</p>
+                    </header>
+
+                    {/* 城市選擇器 */}
+                    <div class="bg-white p-4 rounded-xl shadow-sm mb-6 border border-slate-100 flex items-center gap-4">
+                        <label class="font-medium text-slate-700 whitespace-nowrap">想去哪裡玩？</label>
+                        <select 
+                            value={city} 
+                            onChange={(e) => setCity(e.target.value)}
+                            class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-indigo-500 transition"
+                        >
+                            <option value="東京">🇯🇵 東京 (Tokyo)</option>
+                            <option value="京都">🇯🇵 京都 (Kyoto)</option>
+                            <option value="大阪">🇯🇵 大阪 (Osaka)</option>
+                            <option value="台北">🇹🇼 台北 (Taipei)</option>
+                            <option value="首爾">🇰🇷 首爾 (Seoul)</option>
+                        </select>
                     </div>
 
-                    {/* 主要內容顯示區 */}
-                    <div className="content-area no-scrollbar">
-                        {activeTab === 'list' && <RenderDestination />}
-                        {activeTab === 'itinerary' && <RenderItinerary />}
-                        {activeTab === 'mustgo' && <RenderMustGo />}
-                        {['accounting', 'prep'].includes(activeTab) && RenderPlaceholder(activeTab === 'accounting' ? '記帳分帳' : '出國清單')}
-                    </div>
-
-                    {/* 安排行程專用 Modal */}
-                    {addToItinModal.isOpen && (
-                        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-                            <div className="bg-white rounded-2xl p-5 w-full max-w-sm shadow-xl">
-                                <h3 className="font-bold text-base mb-1 flex items-center gap-1.5" style={{ color: COLORS.darkText }}><i className="fa-solid fa-calendar-plus text-indigo-500"></i> 排入旅遊行程</h3>
-                                <p className="text-xs text-gray-400 mb-4">將此項目無縫加進您的每日行程時間軸中</p>
-                                <div className="space-y-3 mb-4">
-                                    <div>
-                                        <label className="text-[11px] font-bold text-gray-500 block mb-1">選擇天數</label>
-                                        <select className="w-full p-2 border rounded-lg bg-white text-sm" value={modalDayChoice} onChange={(e) => setModalDayChoice(e.target.value)}>
-                                            {uniqueDays.map(d => <option key={d} value={d}>{d}</option>)}
-                                            <option value="__CUSTOM__">+ 自訂新天數</option>
-                                        </select>
-                                    </div>
-                                    {modalDayChoice === '__CUSTOM__' && (
-                                        <input type="text" placeholder="自訂天數 (例: Day 3)" className="w-full p-2 border rounded-lg text-sm" value={modalCustomDay} onChange={e => setModalCustomDay(e.target.value)} />
-                                    )}
-                                    <div>
-                                        <label className="text-[11px] font-bold text-gray-500 block mb-1">出發時間</label>
-                                        <input type="time" className="w-full p-2 border rounded-lg text-sm" value={modalTime} onChange={e => setModalTime(e.target.value)} />
-                                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* 左側：即時天氣看板 */}
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-between">
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                    ☀️ 當地即時天氣 ({city})
+                                </h3>
+                                <div class="flex items-center gap-4 my-4">
+                                    <span class="text-4xl font-extrabold text-slate-800">{weather.temp}</span>
+                                    <span class="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-sm font-medium">
+                                        {weather.condition}
+                                    </span>
                                 </div>
-                                <div className="flex gap-2">
-                                    <button onClick={confirmAddToItinerary} className="flex-1 py-2 rounded-lg text-white font-bold text-sm" style={{ backgroundColor: COLORS.mediumBlue }}>確認加入</button>
-                                    <button onClick={() => setAddToItinModal({ isOpen: false, item: null })} className="flex-1 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium">關閉</button>
-                                </div>
+                                <p class="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100 mt-2">
+                                    💡 <strong>小建議：</strong>{weather.advice}
+                                </p>
                             </div>
                         </div>
-                    )}
 
-                    {/* 全域 Toast 提示框 */}
-                    {toastMessage && (
-                        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-black/80 text-white font-medium px-4 py-2 rounded-full text-xs shadow-md z-[200] transition-all flex items-center gap-1.5">
-                            <i className="fa-solid fa-circle-check text-green-400 text-sm"></i> {toastMessage}
+                        {/* 中間：熱門景點推薦 */}
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 md:col-span-2">
+                            <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                📍 {city} 熱門必訪景點
+                            </h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {attractions.map((place, index) => (
+                                    <div 
+                                        key={index} 
+                                        class="p-3 bg-slate-50 hover:bg-indigo-50 rounded-lg border border-slate-100 flex justify-between items-center group transition cursor-pointer"
+                                        onClick={() => {
+                                            if (!itinerary.some(item => item.text === place)) {
+                                                setItinerary([...itinerary, { id: Date.now(), text: place }]);
+                                            }
+                                        }}
+                                    >
+                                        <span class="text-slate-700 font-medium">{place}</span>
+                                        <span class="text-xs text-indigo-500 opacity-0 group-hover:opacity-100 transition">
+                                            + 加入行程
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                    )}
+                    </div>
 
-                    {/* 底部導覽列 */}
-                    <div className="fixed bottom-0 left-0 right-0 max-w-[480px] mx-auto bg-white/95 backdrop-blur border-t flex justify-around py-2 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] z-50">
-                        <button onClick={() => setActiveTab('list')} className={`flex flex-col items-center gap-0.5 text-xs font-bold transition-all ${activeTab === 'list' ? 'scale-105' : 'opacity-40'}`} style={{ color: COLORS.darkText }}>
-                            <i className="fa-solid fa-map-location-dot text-lg"></i><span>目的地</span>
-                        </button>
-                        <button onClick={() => setActiveTab('itinerary')} className={`flex flex-col items-center gap-0.5 text-xs font-bold transition-all ${activeTab === 'itinerary' ? 'scale-105' : 'opacity-40'}`} style={{ color: COLORS.darkText }}>
-                            <i className="fa-solid fa-route text-lg"></i><span>行程軸</span>
-                        </button>
-                        <button onClick={() => setActiveTab('mustgo')} className={`flex flex-col items-center gap-0.5 text-xs font-bold transition-all ${activeTab === 'mustgo' ? 'scale-105' : 'opacity-40'}`} style={{ color: COLORS.darkText }}>
-                            <i className="fa-solid fa-heart text-lg"></i><span>口袋單</span>
-                        </button>
-                        <button onClick={() => setActiveTab('accounting')} className={`flex flex-col items-center gap-0.5 text-xs font-bold transition-all ${activeTab === 'accounting' ? 'scale-105' : 'opacity-40'}`} style={{ color: COLORS.darkText }}>
-                            <i className="fa-solid fa-wallet text-lg"></i><span>記帳</span>
-                        </button>
-                        <button onClick={() => setActiveTab('prep')} className={`flex flex-col items-center gap-0.5 text-xs font-bold transition-all ${activeTab === 'prep' ? 'scale-105' : 'opacity-40'}`} style={{ color: COLORS.darkText }}>
-                            <i className="fa-solid fa-clipboard-list text-lg"></i><span>清單</span>
-                        </button>
+                    {/* 下方：我的專屬行程規劃 */}
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 mt-6">
+                        <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                            📝 我的專屬行程清單
+                        </h3>
+
+                        {/* 新增行程輸入框 */}
+                        <form onSubmit={handleAddItinerary} class="flex gap-2 mb-4">
+                            <input 
+                                type="text" 
+                                value={newLocation}
+                                onChange={(e) => setNewLocation(e.target.value)}
+                                placeholder="輸入自訂景點或從上方點選加入..."
+                                class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 outline-none focus:border-indigo-500 transition"
+                            />
+                            <button 
+                                type="submit"
+                                class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium transition whitespace-nowrap"
+                            >
+                                新增景點
+                            </button>
+                        </form>
+
+                        {/* 行程列表 */}
+                        {itinerary.length === 0 ? (
+                            <div class="text-center py-8 text-slate-400 border-2 border-dashed border-slate-100 rounded-xl">
+                                目前還沒有安排行程，點選上方推薦景點或手動新增吧！
+                            </div>
+                        ) : (
+                            <div class="space-y-2">
+                                {itinerary.map((item, index) => (
+                                    <div key={item.id} class="flex justify-between items-center p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition">
+                                        <div class="flex items-center gap-3">
+                                            <span class="w-6 h-6 flex items-center justify-center bg-indigo-100 text-indigo-600 rounded-full text-xs font-bold">
+                                                {index + 1}
+                                            </span>
+                                            <span class="text-slate-700 font-medium">{item.text}</span>
+                                        </div>
+                                        <button 
+                                            onClick={() => handleDeleteItinerary(item.id)}
+                                            class="text-rose-500 hover:text-rose-700 text-sm font-medium px-2 py-1 rounded hover:bg-rose-50 transition"
+                                        >
+                                            刪除
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             );
-        };
+        }
 
-        const root = tragedies = ReactDOM.createRoot(document.getElementById('root'));
+        // ====== 修正後的關鍵核心 React 18 渲染機制 ======
+        const root = React-DOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
 </body>
