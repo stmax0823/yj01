@@ -1063,34 +1063,49 @@
 
             // --- 介面渲染: 小工具箱 (匯率、備份、重設) ---
             const RenderTools = () => {
-                const [calcForeignAmount, setCalcForeignAmount] = useState('1000');
-                const [calcTwdAmount, setCalcTwdAmount] = useState('');
-                const [calcCurrency, setCalcCurrency] = useState(currency.code);
-                const QUICK_AMOUNTS = [100, 500, 1000, 5000, 10000];
+                const [calcAmount1, setCalcAmount1] = useState('1000');
+                const [calcAmount2, setCalcAmount2] = useState('');
+                const [calcCurrency1, setCalcCurrency1] = useState(currency.code);
+                const [calcCurrency2, setCalcCurrency2] = useState('TWD');
+                const [lastEdited, setLastEdited] = useState(1);
 
-                const rateObj = useMemo(() => CURRENCIES.find(c => c.code === calcCurrency), [calcCurrency]);
-                const currentRate = useMemo(() => {
-                    return (calcCurrency === currency.code) ? exchangeRate : (rateObj ? rateObj.defaultRate : 1);
-                }, [calcCurrency, exchangeRate, rateObj]);
-
-                const handleForeignChange = (value) => {
-                    setCalcForeignAmount(value);
-                    if (value && !isNaN(value)) {
-                        const twd = Math.ceil(Number(value) / currentRate);
-                        setCalcTwdAmount(String(twd));
-                    } else {
-                        setCalcTwdAmount('');
-                    }
+                const getRate = (fromCode, toCode) => {
+                    const fromObj = CURRENCIES.find(c => c.code === fromCode);
+                    const toObj = CURRENCIES.find(c => c.code === toCode);
+                    
+                    // 獲取相對於台幣的匯率
+                    const fromRate = (fromCode === currency.code) ? exchangeRate : (fromObj ? fromObj.defaultRate : 1);
+                    const toRate = (toCode === currency.code) ? exchangeRate : (toObj ? toObj.defaultRate : 1);
+                    
+                    // 計算兩者之間的交叉匯率 (1 from = ? to)
+                    // 這裡的 rate 定義是 1 TWD = rate Foreign
+                    // 所以 1 From = (1/fromRate) TWD = (1/fromRate) * toRate To
+                    return toRate / fromRate;
                 };
 
-                const handleTwdChange = (value) => {
-                    setCalcTwdAmount(value);
-                    if (value && !isNaN(value)) {
-                        const foreign = Math.ceil(Number(value) * currentRate);
-                        setCalcForeignAmount(String(foreign));
+                const currentRate = useMemo(() => getRate(calcCurrency1, calcCurrency2), [calcCurrency1, calcCurrency2, exchangeRate, currency]);
+
+                useEffect(() => {
+                    if (lastEdited === 1) {
+                        if (calcAmount1 && !isNaN(calcAmount1)) {
+                            setCalcAmount2(String(Math.ceil(Number(calcAmount1) * currentRate)));
+                        } else {
+                            setCalcAmount2('');
+                        }
                     } else {
-                        setCalcForeignAmount('');
+                        if (calcAmount2 && !isNaN(calcAmount2)) {
+                            setCalcAmount1(String(Math.ceil(Number(calcAmount2) / currentRate)));
+                        } else {
+                            setCalcAmount1('');
+                        }
                     }
+                }, [calcAmount1, calcAmount2, calcCurrency1, calcCurrency2, currentRate, lastEdited]);
+
+                const handleSwap = () => {
+                    const tempCur = calcCurrency1;
+                    setCalcCurrency1(calcCurrency2);
+                    setCalcCurrency2(tempCur);
+                    setLastEdited(lastEdited === 1 ? 2 : 1);
                 };
 
                 const handleShareData = () => {
@@ -1145,55 +1160,83 @@
 
                 return (
                     <div className="p-4 pb-24 space-y-6">
-                        {/* 即時匯率換算器 */}
-                        <div className="bg-white p-5 rounded-2xl border shadow-sm">
-                            <h3 className="font-bold text-sm mb-4 flex items-center gap-2" style={{ color: COLORS.darkText }}>
-                                <i className="fa-solid fa-calculator" style={{ color: '#495B7D' }}></i> 即時匯率換算
+                        {/* 即時匯率換算器 - 上下並列卡片設計 */}
+                        <div className="bg-white p-6 rounded-3xl border shadow-lg">
+                            <h3 className="font-bold text-sm mb-6 flex items-center gap-2" style={{ color: COLORS.darkText }}>
+                                <i className="fa-solid fa-calculator" style={{ color: '#495B7D' }}></i> 匯率換算
                             </h3>
-                            <div className="space-y-4">
-
-                                {/* 換算結果 - 雙向輸入 + 幣別下拉選單 */}
-                                <div className="flex items-center gap-0 rounded-2xl border overflow-hidden shadow-inner" style={{ borderColor: '#E5E0CC' }}>
-                                    <div className="flex-1 p-4 flex flex-col items-center justify-center" style={{ backgroundColor: '#F0ECDD' }}>
+                            
+                            <div className="space-y-3">
+                                {/* 上方區塊 */}
+                                <div className="bg-slate-50 rounded-2xl p-4 border border-gray-100 focus-within:ring-2 focus-within:ring-[#8BA3C5]/30 transition-all">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">支付 / 持有</label>
                                         <select 
-                                            className="text-[10px] font-bold text-gray-500 uppercase mb-2 bg-transparent border-none outline-none cursor-pointer"
-                                            value={calcCurrency}
-                                            onChange={e => setCalcCurrency(e.target.value)}
+                                            className="bg-transparent text-[#8BA3C5] font-bold text-xs outline-none cursor-pointer"
+                                            value={calcCurrency1}
+                                            onChange={e => { setCalcCurrency1(e.target.value); setLastEdited(1); }}
                                         >
-                                            {CURRENCIES.filter(c => c.code !== 'TWD').map(c => (
-                                                <option key={c.code} value={c.code}>{c.symbol} {c.code}</option>
+                                            {CURRENCIES.map(c => (
+                                                <option key={c.code} value={c.code}>{c.name} ({c.code})</option>
                                             ))}
                                         </select>
-                                        <input
-                                            type="number"
-                                            placeholder="0"
-                                            className="w-full text-center text-lg font-black text-slate-800 bg-transparent border-none outline-none"
-                                            value={calcForeignAmount}
-                                            onChange={e => handleForeignChange(e.target.value)}
+                                    </div>
+                                    <div className="flex items-center text-2xl font-black text-slate-800">
+                                        <span className="text-gray-300 mr-2 text-sm">{calcCurrency1}</span>
+                                        <input 
+                                            type="number" 
+                                            inputMode="decimal"
+                                            className="w-full bg-transparent outline-none text-right" 
+                                            placeholder="0" 
+                                            value={calcAmount1}
+                                            onChange={e => { setCalcAmount1(e.target.value); setLastEdited(1); }}
                                         />
                                     </div>
-                                    <div className="z-10 -mx-3 bg-white w-8 h-8 rounded-full border shadow-sm flex items-center justify-center text-slate-400 cursor-pointer hover:text-slate-600 transition-colors" style={{ borderColor: '#E5E0CC' }}>
-                                        <i className="fa-solid fa-right-left text-xs"></i>
+                                </div>
+
+                                {/* 中間切換按鈕 */}
+                                <div className="flex justify-center -my-6 relative z-10">
+                                    <button 
+                                        onClick={handleSwap}
+                                        className="bg-[#8BA3C5] text-white p-2.5 rounded-full shadow-md hover:bg-[#7a92b4] transition-all active:scale-90"
+                                    >
+                                        <i className="fa-solid fa-arrows-up-down text-sm"></i>
+                                    </button>
+                                </div>
+
+                                {/* 下方區塊 */}
+                                <div className="bg-slate-50 rounded-2xl p-4 border border-gray-100 focus-within:ring-2 focus-within:ring-[#8BA3C5]/30 transition-all">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">換取 / 目標</label>
+                                        <select 
+                                            className="bg-transparent text-[#8BA3C5] font-bold text-xs outline-none cursor-pointer"
+                                            value={calcCurrency2}
+                                            onChange={e => { setCalcCurrency2(e.target.value); setLastEdited(2); }}
+                                        >
+                                            {CURRENCIES.map(c => (
+                                                <option key={c.code} value={c.code}>{c.name} ({c.code})</option>
+                                            ))}
+                                        </select>
                                     </div>
-                                    <div className="flex-1 p-4 flex flex-col items-center justify-center text-white" style={{ backgroundColor: '#8BA3C5' }}>
-                                        <span className="text-[10px] font-bold text-white/80 uppercase mb-2">台幣 (NT$)</span>
-                                        <input
-                                            type="number"
-                                            placeholder="0"
-                                            className="w-full text-center text-lg font-black text-white bg-transparent border-none outline-none placeholder-white/50"
-                                            value={calcTwdAmount}
-                                            onChange={e => handleTwdChange(e.target.value)}
+                                    <div className="flex items-center text-2xl font-black text-slate-800">
+                                        <span className="text-gray-300 mr-2 text-sm">{calcCurrency2}</span>
+                                        <input 
+                                            type="number" 
+                                            inputMode="decimal"
+                                            className="w-full bg-transparent outline-none text-right" 
+                                            placeholder="0" 
+                                            value={calcAmount2}
+                                            onChange={e => { setCalcAmount2(e.target.value); setLastEdited(2); }}
                                         />
                                     </div>
                                 </div>
 
                                 {/* 匯率資訊 */}
-                                <div className="text-center py-1">
-                                    <span className="text-[11px] text-gray-400 font-medium">
-                                        目前匯率：1 TWD = {currentRate ? currentRate.toFixed(4) : '—'} {calcCurrency}
-                                    </span>
+                                <div className="text-center pt-4">
+                                    <div className="inline-block px-4 py-1.5 bg-[#F0ECDD]/50 rounded-full text-[11px] font-bold text-gray-500">
+                                        1 <span className="text-[#8BA3C5]">{calcCurrency1}</span> = {currentRate.toFixed(4)} <span className="text-[#8BA3C5]">{calcCurrency2}</span>
+                                    </div>
                                 </div>
-
                             </div>
                         </div>
 
