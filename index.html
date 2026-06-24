@@ -255,7 +255,8 @@
                 setItinerary([...itinerary, {
                     id: Date.now(), day: finalDay, time: modalTime,
                     title: addToItinModal.item?.name || addToItinModal.item?.notes || '未命名行程',
-                    address: addToItinModal.item?.address || '', mapUrl: addToItinModal.item?.url || '', transport: ''
+                    address: addToItinModal.item?.address || '', mapUrl: addToItinModal.item?.url || '', transport: '',
+                    image: addToItinModal.item?.image || null, notes: ''
                 }].sort((a, b) => a.day !== b.day ? a.day.localeCompare(b.day) : a.time.localeCompare(b.time)));
                 setAddToItinModal({ isOpen: false, item: null }); setModalCustomDay('');
                 showToast("成功安排至行程中！");
@@ -373,14 +374,30 @@
             // --- 介面渲染: 行程 (支援依日期分類) ---
             const RenderItinerary = () => {
                 const [showAddForm, setShowAddForm] = useState(false);
-                const [newItem, setNewItem] = useState({ day: uniqueDays[0] || 'Day 1', time: '10:00', title: '', address: '', transport: '', mapUrl: '' });
+                const [newItem, setNewItem] = useState({ day: uniqueDays[0] || 'Day 1', time: '10:00', title: '', address: '', transport: '', mapUrl: '', image: null, notes: '' });
                 const [editingId, setEditingId] = useState(null);
                 const [editItem, setEditItem] = useState(null);
+
+                const handleItineraryImageUpload = (e, isEdit = false) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            const imageData = event.target?.result;
+                            if (isEdit) {
+                                setEditItem({...editItem, image: imageData});
+                            } else {
+                                setNewItem({...newItem, image: imageData});
+                            }
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                };
 
                 const handleAdd = () => {
                     if (!newItem.title) return;
                     setItinerary([...itinerary, { ...newItem, id: Date.now() }].sort((a, b) => a.day !== b.day ? a.day.localeCompare(b.day) : a.time.localeCompare(b.time)));
-                    setNewItem({ day: newItem.day, time: '', title: '', address: '', transport: '', mapUrl: '' });
+                    setNewItem({ day: newItem.day, time: '', title: '', address: '', transport: '', mapUrl: '', image: null, notes: '' });
                     setShowAddForm(false); showToast("新增行程成功！");
                 };
 
@@ -416,6 +433,28 @@
                                 <input type="text" placeholder="詳細地址 (選填)" className="w-full p-2 border rounded-lg text-sm mb-2" value={newItem.address} onChange={e => setNewItem({...newItem, address: e.target.value})} />
                                 <input type="text" placeholder="自訂地圖網址" className="w-full p-2 border rounded-lg text-sm mb-2" value={newItem.mapUrl} onChange={e => setNewItem({...newItem, mapUrl: e.target.value})} />
                                 <input type="text" placeholder="交通方式" className="w-full p-2 border rounded-lg text-sm mb-3" value={newItem.transport} onChange={e => setNewItem({...newItem, transport: e.target.value})} />
+                                
+                                <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 space-y-3 mb-4">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">行程備註</label>
+                                        <textarea placeholder="點此輸入備註內容..." className="w-full p-2 border rounded-lg text-sm resize-none bg-white" rows="2" value={newItem.notes} onChange={e => setNewItem({...newItem, notes: e.target.value})} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">行程照片</label>
+                                        <div className="flex items-center gap-3">
+                                            <label className="flex-1 flex items-center justify-center gap-2 p-2 border-2 border-dashed rounded-lg text-xs font-bold text-gray-400 cursor-pointer hover:bg-white hover:text-blue-500 hover:border-blue-200 transition-all">
+                                                <i className="fa-solid fa-camera text-sm"></i> {newItem.image ? '更換照片' : '點此上傳照片'}
+                                                <input type="file" accept="image/*" onChange={(e) => handleItineraryImageUpload(e, false)} className="hidden" />
+                                            </label>
+                                            {newItem.image && (
+                                                <div className="relative group">
+                                                    <img src={newItem.image} className="w-12 h-12 object-cover rounded-lg border shadow-sm" alt="preview" />
+                                                    <button onClick={() => setNewItem({...newItem, image: null})} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[8px] opacity-0 group-hover:opacity-100 transition-opacity"><i className="fa-solid fa-xmark"></i></button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
                                 <button onClick={handleAdd} className="w-full py-2 rounded-lg text-white font-bold text-sm" style={{ backgroundColor: COLORS.mediumBlue }}>儲存行程</button>
                             </div>
                         )}
@@ -435,7 +474,29 @@
                                                         </div>
                                                         <input type="text" placeholder="標題" className="w-full p-2 border rounded-lg text-sm" value={editItem.title} onChange={e => setEditItem({...editItem, title: e.target.value})} />
                                                         <input type="text" placeholder="地址" className="w-full p-2 border rounded-lg text-sm" value={editItem.address} onChange={e => setEditItem({...editItem, address: e.target.value})} />
-                                                        <input type="text" placeholder="交通" className="w-full p-2 border rounded-lg text-sm" value={editItem.transport} onChange={e => setEditItem({...editItem, transport: e.target.value})} />
+                                                        <input type="text" placeholder="交通" className="w-full p-2 border rounded-lg text-sm mb-3" value={editItem.transport} onChange={e => setEditItem({...editItem, transport: e.target.value})} />
+                                                        
+                                                        <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 space-y-3 mb-3">
+                                                            <div>
+                                                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">行程備註</label>
+                                                                <textarea placeholder="點此輸入備註內容..." className="w-full p-2 border rounded-lg text-sm resize-none bg-white" rows="2" value={editItem.notes || ''} onChange={e => setEditItem({...editItem, notes: e.target.value})} />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">行程照片</label>
+                                                                <div className="flex items-center gap-3">
+                                                                    <label className="flex-1 flex items-center justify-center gap-2 p-2 border-2 border-dashed rounded-lg text-xs font-bold text-gray-400 cursor-pointer hover:bg-white hover:text-blue-500 hover:border-blue-200 transition-all">
+                                                                        <i className="fa-solid fa-camera text-sm"></i> {editItem.image ? '更換照片' : '點此上傳照片'}
+                                                                        <input type="file" accept="image/*" onChange={(e) => handleItineraryImageUpload(e, true)} className="hidden" />
+                                                                    </label>
+                                                                    {editItem.image && (
+                                                                        <div className="relative group">
+                                                                            <img src={editItem.image} className="w-12 h-12 object-cover rounded-lg border shadow-sm" alt="preview" />
+                                                                            <button onClick={() => setEditItem({...editItem, image: null})} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[8px] opacity-0 group-hover:opacity-100 transition-opacity"><i className="fa-solid fa-xmark"></i></button>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
                                                         <div className="flex gap-2 mt-2">
                                                             <button onClick={handleSaveEdit} className="flex-1 py-2 rounded-lg text-white font-bold text-xs" style={{ backgroundColor: COLORS.mediumBlue }}>儲存</button>
                                                             <button onClick={() => !editingId ? null : setEditingId(null)} className="flex-1 py-2 rounded-lg bg-gray-200 text-gray-700 font-bold text-xs">取消</button>
@@ -467,6 +528,16 @@
                                                             <div className="mt-2 flex items-start gap-2 text-xs text-gray-600">
                                                                 <i className="fa-solid fa-location-arrow mt-0.5" style={{ color: COLORS.lightBlue }}></i>
                                                                 <p>{item.transport}</p>
+                                                            </div>
+                                                        )}
+                                                        {item.image && (
+                                                            <div className="mt-3">
+                                                                <img src={item.image} className="w-full h-40 object-cover rounded-lg border shadow-sm" alt="itinerary" />
+                                                            </div>
+                                                        )}
+                                                        {item.notes && (
+                                                            <div className="mt-2 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
+                                                                <p className="text-xs text-gray-700"><span className="font-bold text-yellow-700">📝 備註：</span> {item.notes}</p>
                                                             </div>
                                                         )}
                                                     </>
@@ -588,12 +659,10 @@
                         {showForm && mustGoType === 'buy' && (
                             <div className="p-4 mb-5 rounded-lg bg-white border shadow-sm">
                                 <h3 className="font-bold text-xs mb-3">新增必買項目</h3>
-                                <input type="text" placeholder="商品名稱/備註 (必填)" className="w-full p-2 border rounded-lg text-sm mb-2" value={buyForm.notes} onChange={e => setBuyForm({...buyForm, notes: e.target.value})} />
-                                <div className="grid grid-cols-2 gap-2 mb-2">
+                                <input type="text" placeholder="商品名稱/備註 (必填)" className="w-full p-2 border rounded-lg text-sm mb-3" value={buyForm.notes} onChange={e => setBuyForm({...buyForm, notes: e.target.value})} />
+                                <div className="space-y-3 mb-3">
                                     <CreatableSelect label="購買店家" options={stores[currentTrip.country] || []} value={buyForm.store} onChange={v => setBuyForm({...buyForm, store: v})} onAddOption={n => setStores({...stores, [currentTrip.country]: [...(stores[currentTrip.country]||[]), n]})} placeholder="選擇商店" />
                                     <CreatableSelect label="品項分類" options={itemTypes} value={buyForm.type} onChange={v => setBuyForm({...buyForm, type: v})} onAddOption={n => setItemTypes([...itemTypes, n])} placeholder="選擇分類" />
-                                </div>
-                                <div className="grid grid-cols-2 gap-2 mb-3">
                                     <div className="flex flex-col gap-1"><label className="text-xs font-bold" style={{color: COLORS.darkText}}>預估費用</label>
                                         <div className="flex gap-1">
                                             <select className="w-16 p-2 border rounded-lg text-xs bg-white" value={buyForm.currency} onChange={e => setBuyForm({...buyForm, currency: e.target.value})}>
@@ -603,7 +672,7 @@
                                         </div>
                                     </div>
                                     <div className="flex flex-col gap-1"><label className="text-xs font-bold" style={{color: COLORS.darkText}}>參考連結</label>
-                                    <input type="text" placeholder="網址" className="p-2 border rounded-lg text-sm bg-white" value={buyForm.url} onChange={e => setBuyForm({...buyForm, url: e.target.value})} /></div>
+                                    <input type="text" placeholder="網址" className="w-full p-2 border rounded-lg text-sm bg-white" value={buyForm.url} onChange={e => setBuyForm({...buyForm, url: e.target.value})} /></div>
                                 </div>
                                 <div className="mb-3">
                                     <label className="block text-xs font-bold mb-1">上傳商品截圖</label>
@@ -755,14 +824,21 @@
                             </div>
                         </div>
 
-                        <div className="text-white rounded-xl p-4 shadow-md mb-4 flex justify-between items-center border" style={{ backgroundColor: '#23354D', borderColor: '#23354D' }}>
-                            <div>
-                                <span className="text-xs block font-bold text-white/80">已選購商品總結計</span>
-                                <span className="text-xl font-black text-white">{currency.symbol} {totals.foreign.toLocaleString()}</span>
-                            </div>
-                            <div className="text-right">
-                                <span className="text-xs block font-bold text-white/80">預估折合台幣</span>
-                                <span className="text-2xl font-black text-white">NT$ {totals.twd?.toLocaleString() || 0}</span>
+                        <div className="text-white rounded-xl p-4 shadow-md mb-4 border" style={{ backgroundColor: '#23354D', borderColor: '#23354D' }}>
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <span className="text-xs block font-bold text-white/80 mb-1">已選購商品總結計</span>
+                                    <div className="flex items-center gap-2">
+                                        <select className="bg-white/20 text-white text-xs font-bold px-2 py-1 rounded border border-white/30 outline-none" value={currency.code} onChange={(e) => handleCurrencyChange(e.target.value)}>
+                                            {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+                                        </select>
+                                        <span className="text-xl font-black text-white">{currency.symbol} {totals.foreign.toLocaleString()}</span>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-xs block font-bold text-white/80 mb-1">預估折合台幣</span>
+                                    <span className="text-2xl font-black text-white">NT$ {totals.twd?.toLocaleString() || 0}</span>
+                                </div>
                             </div>
                         </div>
 
