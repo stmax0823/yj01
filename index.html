@@ -615,15 +615,41 @@
                 const [itemText, setItemText] = useState('');
                 const [itemCost, setItemCost] = useState('');
                 const [itemQty, setItemQty] = useState('1');
+                const [editingId, setEditingId] = useState(null);
 
                 const handleAddItem = () => {
                     if (!itemText || !itemCost) return;
-                    setShoppingList([...shoppingList, { id: Date.now(), text: itemText, cost: Number(itemCost), qty: Number(itemQty), checked: false }]);
-                    setItemText(''); setItemCost(''); setItemQty('1'); showToast("商品已加入試算清單！");
+                    if (editingId) {
+                        setShoppingList(shoppingList.map(item => item.id === editingId ? { ...item, text: itemText, cost: Number(itemCost), qty: Number(itemQty) } : item));
+                        setEditingId(null);
+                        showToast("商品已更新！");
+                    } else {
+                        setShoppingList([...shoppingList, { id: Date.now(), text: itemText, cost: Number(itemCost), qty: Number(itemQty), checked: false }]);
+                        showToast("商品已加入試算清單！");
+                    }
+                    setItemText(''); setItemCost(''); setItemQty('1');
+                };
+
+                const handleEdit = (item) => {
+                    setEditingId(item.id);
+                    setItemText(item.text);
+                    setItemCost(item.cost.toString());
+                    setItemQty(item.qty.toString());
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                };
+
+                const cancelEdit = () => {
+                    setEditingId(null);
+                    setItemText('');
+                    setItemCost('');
+                    setItemQty('1');
                 };
 
                 const toggleCheck = (id) => setShoppingList(shoppingList.map(item => item.id === id ? { ...item, checked: !item.checked } : item));
-                const deleteItem = (id) => setShoppingList(shoppingList.filter(item => item.id !== id));
+                const deleteItem = (id) => {
+                    if (editingId === id) cancelEdit();
+                    setShoppingList(shoppingList.filter(item => item.id !== id));
+                };
 
                 const totals = useMemo(() => {
                     let foreignTotal = 0;
@@ -634,7 +660,7 @@
 
                 return (
                     <div className="p-4 pb-24">
-                        <h2 className="text-xl font-bold mb-2" style={{ color: COLORS.darkText }}>現場採購即時購物車</h2>
+                        <h2 className="text-xl font-bold mb-2" style={{ color: COLORS.darkText }}>購物車</h2>
                         <p className="text-xs text-gray-500 mb-4">勾選已放入購物車的品項，即刻換算為台幣總額！</p>
                         
                         <div className="bg-white p-4 rounded-xl border shadow-sm mb-4">
@@ -643,7 +669,14 @@
                                 <input type="number" placeholder={`金額 (${currency.code})`} className="w-28 p-2 border rounded-lg text-sm bg-white" value={itemCost} onChange={e => setItemCost(e.target.value)} />
                                 <input type="number" placeholder="數量" className="w-16 p-2 border rounded-lg text-sm bg-white" value={itemQty} onChange={e => setItemQty(e.target.value)} />
                             </div>
-                            <button onClick={handleAddItem} className="w-full py-2 rounded-lg text-white font-bold text-sm" style={{ backgroundColor: COLORS.mediumBlue }}>加入清單</button>
+                            <div className="flex gap-2">
+                                <button onClick={handleAddItem} className="flex-1 py-2 rounded-lg text-white font-bold text-sm" style={{ backgroundColor: COLORS.mediumBlue }}>
+                                    {editingId ? '儲存修改' : '加入清單'}
+                                </button>
+                                {editingId && (
+                                    <button onClick={cancelEdit} className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 font-bold text-sm">取消</button>
+                                )}
+                            </div>
                         </div>
 
                         <div className="text-white rounded-xl p-4 shadow-md mb-4 flex justify-between items-center border" style={{ backgroundColor: '#23354D', borderColor: '#23354D' }}>
@@ -667,7 +700,10 @@
                                             <p className="text-xs text-gray-500">{currency.symbol}{item.cost} × {item.qty}件 → 折合約 NT$ {getTwdEquivalent(item.cost * item.qty, currency.code, exchangeRate)}</p>
                                         </div>
                                     </div>
-                                    <button onClick={() => deleteItem(item.id)} className="text-gray-300 hover:text-red-500 transition-colors p-1"><i className="fa-solid fa-trash-can"></i></button>
+                                    <div className="flex gap-1">
+                                        <button onClick={() => handleEdit(item)} className="text-gray-300 hover:text-blue-500 transition-colors p-1"><i className="fa-solid fa-pen"></i></button>
+                                        <button onClick={() => deleteItem(item.id)} className="text-gray-300 hover:text-red-500 transition-colors p-1"><i className="fa-solid fa-trash-can"></i></button>
+                                    </div>
                                 </div>
                             ))}
                             {shoppingList.length === 0 && <p className="text-center text-gray-500 py-10 text-xs">購物車內尚無品項。</p>}
