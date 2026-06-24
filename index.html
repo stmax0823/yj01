@@ -485,8 +485,9 @@
             // --- 介面渲染: 必去必買 ---
             const RenderMustGo = () => {
                 const [showForm, setShowForm] = useState(false);
-                const [eatForm, setEatForm] = useState({ url: '', name: '', country: currentTrip.country, city: currentTrip.city, district: '', type: '', cost: '', currency: '', image: '' });
-                const [buyForm, setBuyForm] = useState({ url: '', country: currentTrip.country, store: '', type: '', cost: '', notes: '', currency: '', image: '' });
+                const [editingMustGoId, setEditingMustGoId] = useState(null);
+                const [eatForm, setEatForm] = useState({ url: '', name: '', country: currentTrip.country, city: currentTrip.city, district: '', type: '', cost: '', currency: currency.code, image: '' });
+                const [buyForm, setBuyForm] = useState({ url: '', country: currentTrip.country, store: '', type: '', cost: '', notes: '', currency: currency.code, image: '' });
 
                 const handleImageUpload = (e, formType) => {
                     const file = e.target.files[0];
@@ -498,15 +499,53 @@
                 };
 
                 const handleAddEat = () => {
-                    setMustEats([...mustEats, { ...eatForm, currency: eatForm.currency || currency.code, id: Date.now() }]);
-                    setEatForm({ url: '', name: '', country: currentTrip.country, city: currentTrip.city, district: '', type: '', cost: '', currency: '', image: '' });
-                    setShowForm(false); showToast("新增美食成功！");
+                    if (!eatForm.name) return;
+                    if (editingMustGoId) {
+                        setMustEats(mustEats.map(e => e.id === editingMustGoId ? { ...eatForm, id: e.id } : e));
+                        setEditingMustGoId(null);
+                        showToast("美食資訊已更新！");
+                    } else {
+                        setMustEats([...mustEats, { ...eatForm, id: Date.now() }]);
+                        showToast("新增美食成功！");
+                    }
+                    setEatForm({ url: '', name: '', country: currentTrip.country, city: currentTrip.city, district: '', type: '', cost: '', currency: currency.code, image: '' });
+                    setShowForm(false);
                 };
 
                 const handleAddBuy = () => {
-                    setMustBuys([...mustBuys, { ...buyForm, currency: buyForm.currency || currency.code, id: Date.now() }]);
-                    setBuyForm({ url: '', country: currentTrip.country, store: '', type: '', cost: '', notes: '', currency: '', image: '' });
-                    setShowForm(false); showToast("新增商品成功！");
+                    if (!buyForm.notes) return;
+                    if (editingMustGoId) {
+                        setMustBuys(mustBuys.map(b => b.id === editingMustGoId ? { ...buyForm, id: b.id } : b));
+                        setEditingMustGoId(null);
+                        showToast("商品資訊已更新！");
+                    } else {
+                        setMustBuys([...mustBuys, { ...buyForm, id: Date.now() }]);
+                        showToast("新增商品成功！");
+                    }
+                    setBuyForm({ url: '', country: currentTrip.country, store: '', type: '', cost: '', notes: '', currency: currency.code, image: '' });
+                    setShowForm(false);
+                };
+
+                const handleEditMustGo = (item, type) => {
+                    setMustGoType(type);
+                    setEditingMustGoId(item.id);
+                    if (type === 'eat') setEatForm({ ...item });
+                    else setBuyForm({ ...item });
+                    setShowForm(true);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                };
+
+                const handleAddToCart = (item) => {
+                    const newItem = {
+                        id: Date.now(),
+                        text: item.notes || item.name,
+                        cost: Number(item.cost) || 0,
+                        qty: 1,
+                        checked: false,
+                        image: item.image || null
+                    };
+                    setShoppingList([...shoppingList, newItem]);
+                    showToast("已加入購物車清單！");
                 };
 
                 return (
@@ -527,8 +566,14 @@
                                 <input type="text" placeholder="店名 (必填)" className="w-full p-2 border rounded-lg text-sm mb-2" value={eatForm.name} onChange={e => setEatForm({...eatForm, name: e.target.value})} />
                                 <div className="grid grid-cols-2 gap-2 mb-2">
                                     <CreatableSelect label="美食分類" options={foodTypes} value={eatForm.type} onChange={v => setEatForm({...eatForm, type: v})} onAddOption={n => setFoodTypes([...foodTypes, n])} placeholder="選擇分類" />
-                                    <div className="flex flex-col gap-1 mb-3"><label className="text-xs font-bold" style={{color: COLORS.darkText}}>預估費用</label>
-                                    <input type="number" placeholder="費用" className="p-2 border rounded-lg text-sm bg-white" value={eatForm.cost} onChange={e => setEatForm({...eatForm, cost: e.target.value})} /></div>
+                                    <div className="flex flex-col gap-1"><label className="text-xs font-bold" style={{color: COLORS.darkText}}>預估費用</label>
+                                        <div className="flex gap-1">
+                                            <select className="w-16 p-2 border rounded-lg text-xs bg-white" value={eatForm.currency} onChange={e => setEatForm({...eatForm, currency: e.target.value})}>
+                                                {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+                                            </select>
+                                            <input type="number" placeholder="金額" className="flex-1 p-2 border rounded-lg text-sm bg-white" value={eatForm.cost} onChange={e => setEatForm({...eatForm, cost: e.target.value})} />
+                                        </div>
+                                    </div>
                                 </div>
                                 <input type="text" placeholder="地圖或介紹網址 (選填)" className="w-full p-2 border rounded-lg text-sm mb-3" value={eatForm.url} onChange={e => setEatForm({...eatForm, url: e.target.value})} />
                                 <div className="mb-3">
@@ -550,7 +595,13 @@
                                 </div>
                                 <div className="grid grid-cols-2 gap-2 mb-3">
                                     <div className="flex flex-col gap-1"><label className="text-xs font-bold" style={{color: COLORS.darkText}}>預估費用</label>
-                                    <input type="number" placeholder="金額" className="p-2 border rounded-lg text-sm bg-white" value={buyForm.cost} onChange={e => setBuyForm({...buyForm, cost: e.target.value})} /></div>
+                                        <div className="flex gap-1">
+                                            <select className="w-16 p-2 border rounded-lg text-xs bg-white" value={buyForm.currency} onChange={e => setBuyForm({...buyForm, currency: e.target.value})}>
+                                                {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+                                            </select>
+                                            <input type="number" placeholder="金額" className="flex-1 p-2 border rounded-lg text-sm bg-white" value={buyForm.cost} onChange={e => setBuyForm({...buyForm, cost: e.target.value})} />
+                                        </div>
+                                    </div>
                                     <div className="flex flex-col gap-1"><label className="text-xs font-bold" style={{color: COLORS.darkText}}>參考連結</label>
                                     <input type="text" placeholder="網址" className="p-2 border rounded-lg text-sm bg-white" value={buyForm.url} onChange={e => setBuyForm({...buyForm, url: e.target.value})} /></div>
                                 </div>
@@ -577,6 +628,7 @@
                                         </div>
                                         <div className="p-2 bg-gray-50 border-t flex justify-between gap-1">
                                             <button onClick={() => setAddToItinModal({ isOpen: true, item })} className="flex-1 text-[11px] font-bold py-1 px-2 rounded bg-emerald-500 text-white flex items-center justify-center gap-0.5 shadow-sm"><i className="fa-solid fa-calendar-plus"></i> 排行程</button>
+                                            <button onClick={() => handleEditMustGo(item, 'eat')} className="p-1 text-xs bg-indigo-500 text-white rounded text-center w-7 shadow-sm"><i className="fa-solid fa-pen"></i></button>
                                             {item.url && <a href={item.url} target="_blank" rel="noreferrer" className="p-1 text-xs bg-blue-500 text-white rounded text-center w-7 shadow-sm"><i className="fa-solid fa-map-location-dot"></i></a>}
                                             <button onClick={() => setMustEats(mustEats.filter(x => x.id !== item.id))} className="p-1 text-xs bg-red-400 text-white rounded text-center w-7 shadow-sm"><i className="fa-solid fa-trash"></i></button>
                                         </div>
@@ -598,7 +650,8 @@
                                             </div>
                                         </div>
                                         <div className="p-2 bg-gray-50 border-t flex justify-between gap-1">
-                                            <button onClick={() => setAddToItinModal({ isOpen: true, item })} className="flex-1 text-[11px] font-bold py-1 px-2 rounded bg-emerald-500 text-white flex items-center justify-center gap-0.5 shadow-sm"><i className="fa-solid fa-calendar-plus"></i> 排行程</button>
+                                            <button onClick={() => handleAddToCart(item)} className="flex-1 text-[11px] font-bold py-1 px-2 rounded bg-orange-500 text-white flex items-center justify-center gap-0.5 shadow-sm"><i className="fa-solid fa-cart-plus"></i> 購物車</button>
+                                            <button onClick={() => handleEditMustGo(item, 'buy')} className="p-1 text-xs bg-indigo-500 text-white rounded text-center w-7 shadow-sm"><i className="fa-solid fa-pen"></i></button>
                                             {item.url && <a href={item.url} target="_blank" rel="noreferrer" className="p-1 text-xs bg-blue-500 text-white rounded text-center w-7 shadow-sm"><i className="fa-solid fa-link"></i></a>}
                                             <button onClick={() => setMustBuys(mustBuys.filter(x => x.id !== item.id))} className="p-1 text-xs bg-red-400 text-white rounded text-center w-7 shadow-sm"><i className="fa-solid fa-trash"></i></button>
                                         </div>
@@ -1028,7 +1081,7 @@
                         {/* 即時匯率換算器 */}
                         <div className="bg-white p-5 rounded-2xl border shadow-sm">
                             <h3 className="font-bold text-sm mb-4 flex items-center gap-2" style={{ color: COLORS.darkText }}>
-                                <i className="fa-solid fa-calculator text-indigo-500"></i> 即時匯率換算
+                                <i className="fa-solid fa-calculator" style={{ color: '#495B7D' }}></i> 即時匯率換算
                             </h3>
                             <div className="space-y-4">
                                 <div className="grid grid-cols-3 gap-2">
@@ -1037,13 +1090,16 @@
                                         {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
                                     </select>
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="p-4 rounded-xl border" style={{ backgroundColor: '#F0ECDD', borderColor: '#E5E0CC' }}>
-                                        <span className="text-[10px] font-bold text-gray-500 uppercase block mb-1">換算為台幣</span>
+                                <div className="flex items-center gap-0 rounded-2xl border overflow-hidden shadow-inner" style={{ borderColor: '#E5E0CC' }}>
+                                    <div className="flex-1 p-4 flex flex-col items-center justify-center" style={{ backgroundColor: '#F0ECDD' }}>
+                                        <span className="text-[10px] font-bold text-gray-500 uppercase mb-1">換算為台幣</span>
                                         <div className="text-lg font-black text-slate-800">NT$ {calcResult.twd.toLocaleString()}</div>
                                     </div>
-                                    <div className="p-4 rounded-xl border text-white" style={{ backgroundColor: '#8BA3C5', borderColor: '#7A92B4' }}>
-                                        <span className="text-[10px] font-bold text-white/80 uppercase block mb-1">台幣換算為 {calcCurrency}</span>
+                                    <div className="z-10 -mx-3 bg-white w-8 h-8 rounded-full border shadow-sm flex items-center justify-center text-slate-400" style={{ borderColor: '#E5E0CC' }}>
+                                        <i className="fa-solid fa-right-left text-xs"></i>
+                                    </div>
+                                    <div className="flex-1 p-4 flex flex-col items-center justify-center text-white" style={{ backgroundColor: '#8BA3C5' }}>
+                                        <span className="text-[10px] font-bold text-white/80 uppercase mb-1">台幣換為 {calcCurrency}</span>
                                         <div className="text-lg font-black text-white">{calcResult.foreign.toLocaleString()}</div>
                                     </div>
                                 </div>
@@ -1112,7 +1168,8 @@
                                 <button
                                     key={item.id}
                                     onClick={() => { setActiveTab(item.id); setIsDrawerOpen(false); }}
-                                    className={`w-full flex items-center gap-4 p-4 rounded-xl font-bold text-sm transition-all ${activeTab === item.id ? 'bg-indigo-50 text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
+                                    className={`w-full flex items-center gap-4 p-4 rounded-xl font-bold text-sm transition-all ${activeTab === item.id ? 'text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}
+                                    style={{ backgroundColor: activeTab === item.id ? '#23354D' : 'transparent' }}
                                 >
                                     <i className={`fa-solid ${item.icon} text-lg w-6`}></i>
                                     {item.label}
@@ -1133,7 +1190,7 @@
                                 <h1 className="text-base font-black tracking-wide" style={{ color: COLORS.darkText }}>
                                     {menuItems.find(m => m.id === activeTab)?.label || '旅遊小幫手'}
                                 </h1>
-                           
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Smart Travel Assistant</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-1 bg-gray-50 border p-1 rounded-lg">
