@@ -4,14 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>✈️ 旅遊隨身包</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel (For JSX) -->
     <script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
-    <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
@@ -47,7 +43,7 @@
             { code: 'THB', symbol: '฿', rateToTwd: 1.1, name: '泰銖' }
         ];
 
-        // 已完全移除台灣，並大量加入日韓熱門知名景點
+        // 初始目的地資料庫：移除台灣，並加入大量日本與韓國流行、知名景點
         const INITIAL_DESTINATIONS = [
             {
                 country: '日本',
@@ -93,7 +89,7 @@
                         areas: ['明洞/弘大', '東大門', '聖水洞/漢南洞', '江南/三成', '景福宮/北村', '梨泰院'],
                         spots: [
                             '景福宮 (韓服體驗)', 'N首爾塔', '北村韓屋村', '樂天世界 (探險世界)', '星空圖書館 (COEX)', 
-                            '廣藏市場 (棉被/生牛肉)', '益善洞韓屋村咖啡街', '漢江公園 (盤浦大橋噴泉)', '青瓦台', '聖水洞流行概念店',
+                            '廣藏市場 (棉著/生牛肉)', '益善洞韓屋村咖啡街', '漢江公園 (盤浦大橋噴泉)', '青瓦台', '聖水洞流行概念店',
                             '汝矣島現代百貨 (The Hyundai Seoul)', '漢南洞潮流街區', '延南洞林蔭道', '新沙洞林蔭道'
                         ]
                     },
@@ -123,8 +119,7 @@
 
         const RECOMMENDED_SHOPS = {
             'KRW': ['Olive Young', 'Daiso', '樂天超市', 'E-Mart', 'Mardi Mercredi', 'TAMBURINS', 'BHC炸雞'],
-            'JPY': ['Donki 唐吉訶德', 'Bic Camera', '松本清', 'Uniqlo', 'LOFT', '無印良品'],
-            'TWD': ['全聯', '家樂福', '屈臣氏', '康是美']
+            'JPY': ['Donki 唐吉訶德', 'Bic Camera', '松本清', 'Uniqlo', 'LOFT', '無印良品']
         };
 
         const DEFAULT_PREP_LIST = [
@@ -256,7 +251,7 @@
                                 setExchangeRate(parseFloat(rawRate.toFixed(2)));
                             }
                         })
-                        .catch(err => console.log("匯率 API 載入失敗，使用寫死數值", err));
+                        .catch(err => console.log("匯率 API 載入失敗，使用預設值", err));
                 } else {
                     setExchangeRate(1);
                 }
@@ -699,10 +694,11 @@
                 );
             };
 
+            // 工具箱大組件：整合代購、分帳、行李三個子功能
             const RenderTools = () => {
                 const [activeSubTab, setActiveSubTab] = useState('shop');
 
-                // 代購功能狀態
+                // 代購功能內部狀態
                 const [shopName, setShopName] = useState('');
                 const [itemName, setItemName] = useState('');
                 const [itemPrice, setItemPrice] = useState('');
@@ -747,7 +743,7 @@
                     }
                 };
 
-                // 分帳功能狀態
+                // 分帳功能內部狀態
                 const [billTitle, setBillTitle] = useState('');
                 const [billTotal, setBillTotal] = useState('');
                 const [billPayer, setBillPayer] = useState(members[0] || '');
@@ -825,7 +821,7 @@
                     return settlements;
                 };
 
-                // 行理清單狀態
+                // 行李清單內部狀態
                 const [newPrepText, setNewPrepText] = useState("");
                 const [newPrepCate, setNewPrepCate] = useState("個人用品");
 
@@ -844,18 +840,20 @@
 
                 return (
                     <div className="flex flex-col gap-4">
+                        {/* 頂部子導覽列 */}
                         <div className="flex bg-white border-b sticky top-0 z-20 shadow-xs">
-                            <button onClick={() => setActiveSubTab('shop')} className={`flex-1 py-3 text-xs font-black text-center border-b-2 ${activeSubTab === 'shop' ? 'border-slate-700 text-slate-800' : 'border-transparent text-slate-400'}`}>
+                            <button onClick={() => setActiveSubTab('shop')} className={`flex-1 py-3 text-xs font-black text-center border-b-2 ${activeSubTab === 'shop' ? 'border-slate-700 text-slate-800 bg-slate-50' : 'border-transparent text-slate-400'}`}>
                                 <i className="fa-solid fa-basket-shopping mr-1"></i>代購購物車
                             </button>
-                            <button onClick={() => setActiveSubTab('bill')} className={`flex-1 py-3 text-xs font-black text-center border-b-2 ${activeSubTab === 'bill' ? 'border-slate-700 text-slate-800' : 'border-transparent text-slate-400'}`}>
+                            <button onClick={() => setActiveSubTab('bill')} className={`flex-1 py-3 text-xs font-black text-center border-b-2 ${activeSubTab === 'bill' ? 'border-slate-700 text-slate-800 bg-slate-50' : 'border-transparent text-slate-400'}`}>
                                 <i className="fa-solid fa-comments-dollar mr-1"></i>團隊分帳
                             </button>
-                            <button onClick={() => setActiveSubTab('prep')} className={`flex-1 py-3 text-xs font-black text-center border-b-2 ${activeSubTab === 'prep' ? 'border-slate-700 text-slate-800' : 'border-transparent text-slate-400'}`}>
+                            <button onClick={() => setActiveSubTab('prep')} className={`flex-1 py-3 text-xs font-black text-center border-b-2 ${activeSubTab === 'prep' ? 'border-slate-700 text-slate-800 bg-slate-50' : 'border-transparent text-slate-400'}`}>
                                 <i className="fa-solid fa-list-check mr-1"></i>行李檢查表
                             </button>
                         </div>
 
+                        {/* 子功能內容渲染區 */}
                         <div className="p-4 pt-0 flex flex-col gap-4">
                             {activeSubTab === 'shop' && (
                                 <div className="flex flex-col gap-4 animate-fade-in">
@@ -869,7 +867,7 @@
                                             <div className="grid grid-cols-3 gap-2">
                                                 <div className="col-span-2 relative">
                                                     <span className="absolute left-2.5 top-2.5 text-xs text-slate-400 font-bold">{currentCurrencySymbol}</span>
-                                                    <input type="number" step="any" placeholder="當地價格" className="p-2 pl-6 border rounded-xl text-sm w-full font-mono" value={itemPrice} onChange={e => setItemPrice(e.target.value)} required />
+                                                    <input type="number" step="any" placeholder="當地價格" className="p-2 pl-6 border rounded-xl text-sm w-full font-mono" value={itemPrice} onChange={e => itemPrice(e.target.value)} required />
                                                 </div>
                                                 <input type="number" placeholder="數量" className="p-2 border rounded-xl text-sm w-full text-center font-mono" value={itemQty} onChange={e => setItemQty(e.target.value)} required />
                                             </div>
