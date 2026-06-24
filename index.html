@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>✈️ 旅遊小幫手2.0</title>
-    <meta name="apple-mobile-web-app-title" content="旅遊小幫手2.0">
+    <title>✈️ 旅遊小幫手3.0</title>
+    <meta name="apple-mobile-web-app-title" content="旅遊小幫手3.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -16,7 +16,7 @@
     <style>
         body { margin: 0; padding: 0; background-color: #F0ECDD; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent;}
         .app-container { max-w: 480px; margin: 0 auto; background-color: #F0ECDD; min-height: 100vh; position: relative; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; }
-        .content-area { flex: 1; overflow-y: auto; padding-bottom: 80px; }
+        .content-area { flex: 1; overflow-y: auto; padding-bottom: 20px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         input, select, textarea { outline: none; }
@@ -144,6 +144,7 @@
         const App = () => {
             const [activeTab, setActiveTab] = useState('list'); 
             const [toastMessage, setToastMessage] = useState('');
+            const [isDrawerOpen, setIsDrawerOpen] = useState(false);
             const showToast = (message) => { setToastMessage(message); setTimeout(() => setToastMessage(''), 2500); };
 
             // 💾 狀態初始化 (藉由版本號升級，強制加載最新的中日韓擴充資料，不被舊緩存遮蔽)
@@ -1015,13 +1016,58 @@
                 </div>
             );
 
+            const menuItems = [
+                { id: 'dest', label: '目的地設定', icon: 'fa-map' },
+                { id: 'list', label: '我的行程表', icon: 'fa-route' },
+                { id: 'must', label: '口袋必去買', icon: 'fa-heart' },
+                { id: 'shop', label: '即時購物車', icon: 'fa-cart-shopping' },
+                { id: 'bill', label: '多人分帳記', icon: 'fa-comments-dollar' },
+                { id: 'prep', label: '行前檢查表', icon: 'fa-list-check' },
+                { id: 'back', label: '資料備份', icon: 'fa-cloud-arrow-down' }
+            ];
+
             return (
-                <div className="app-container">
-                    <header className="p-4 border-b flex justify-between items-center bg-white shadow-sm sticky top-0 z-40">
-                        <div className="flex items-center gap-2">
-                            <span className="text-2xl">✈️</span>
+                <div className="app-container overflow-x-hidden">
+                    {/* 側邊欄遮罩 */}
+                    {isDrawerOpen && (
+                        <div className="fixed inset-0 bg-black/50 z-[60] backdrop-blur-sm transition-opacity" onClick={() => setIsDrawerOpen(false)}></div>
+                    )}
+
+                    {/* 側邊導覽選單 */}
+                    <div className={`fixed top-0 left-0 h-full w-64 bg-white z-[70] shadow-2xl transition-transform duration-300 ease-in-out transform ${isDrawerOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                        <div className="p-6 border-b flex items-center gap-3 bg-slate-50">
+                            <span className="text-3xl">✈️</span>
                             <div>
-                                <h1 className="text-base font-black tracking-wide" style={{ color: COLORS.darkText }}>旅遊小幫手 2.0</h1>
+                                <h2 className="font-black text-slate-800 tracking-tight">旅遊小幫手 2.0</h2>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase">Navigation Menu</p>
+                            </div>
+                        </div>
+                        <nav className="p-4 space-y-2">
+                            {menuItems.map(item => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => { setActiveTab(item.id); setIsDrawerOpen(false); }}
+                                    className={`w-full flex items-center gap-4 p-4 rounded-xl font-bold text-sm transition-all ${activeTab === item.id ? 'bg-indigo-50 text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
+                                >
+                                    <i className={`fa-solid ${item.icon} text-lg w-6`}></i>
+                                    {item.label}
+                                </button>
+                            ))}
+                        </nav>
+                        <div className="absolute bottom-6 left-6 right-6">
+                            <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-widest">Version 2.0.1 Stable</p>
+                        </div>
+                    </div>
+
+                    <header className="p-4 border-b flex justify-between items-center bg-white shadow-sm sticky top-0 z-40">
+                        <div className="flex items-center gap-3">
+                            <button onClick={() => setIsDrawerOpen(true)} className="p-2 -ml-2 hover:bg-slate-50 rounded-lg transition-colors text-slate-600">
+                                <i className="fa-solid fa-bars-staggered text-xl"></i>
+                            </button>
+                            <div>
+                                <h1 className="text-base font-black tracking-wide" style={{ color: COLORS.darkText }}>
+                                    {menuItems.find(m => m.id === activeTab)?.label || '旅遊小幫手'}
+                                </h1>
                                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Smart Travel Assistant</p>
                             </div>
                         </div>
@@ -1081,15 +1127,6 @@
                         </div>
                     )}
 
-                    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-xl max-w-[480px] margin-0-auto z-40 flex justify-around p-2.5">
-                        <button onClick={() => setActiveTab('dest')} className={`flex flex-col items-center gap-1 text-[10px] font-bold transition-all ${activeTab === 'dest' ? 'scale-105' : 'opacity-50'}`} style={{ color: activeTab === 'dest' ? COLORS.mediumBlue : COLORS.darkText }}><i className="fa-solid fa-map text-base"></i>目的地</button>
-                        <button onClick={() => setActiveTab('list')} className={`flex flex-col items-center gap-1 text-[10px] font-bold transition-all ${activeTab === 'list' ? 'scale-105' : 'opacity-50'}`} style={{ color: activeTab === 'list' ? COLORS.mediumBlue : COLORS.darkText }}><i className="fa-solid fa-route text-base"></i>行程表</button>
-                        <button onClick={() => setActiveTab('must')} className={`flex flex-col items-center gap-1 text-[10px] font-bold transition-all ${activeTab === 'must' ? 'scale-105' : 'opacity-50'}`} style={{ color: activeTab === 'must' ? COLORS.mediumBlue : COLORS.darkText }}><i className="fa-solid fa-heart text-base"></i>必去買</button>
-                        <button onClick={() => setActiveTab('shop')} className={`flex flex-col items-center gap-1 text-[10px] font-bold transition-all ${activeTab === 'shop' ? 'scale-105' : 'opacity-50'}`} style={{ color: activeTab === 'shop' ? COLORS.mediumBlue : COLORS.darkText }}><i className="fa-solid fa-cart-shopping text-base"></i>購物車</button>
-                        <button onClick={() => setActiveTab('bill')} className={`flex flex-col items-center gap-1 text-[10px] font-bold transition-all ${activeTab === 'bill' ? 'scale-105' : 'opacity-50'}`} style={{ color: activeTab === 'bill' ? COLORS.mediumBlue : COLORS.darkText }}><i className="fa-solid fa-comments-dollar text-base"></i>分帳</button>
-                        <button onClick={() => setActiveTab('prep')} className={`flex flex-col items-center gap-1 text-[10px] font-bold transition-all ${activeTab === 'prep' ? 'scale-105' : 'opacity-50'}`} style={{ color: activeTab === 'prep' ? COLORS.mediumBlue : COLORS.darkText }}><i className="fa-solid fa-list-check text-base"></i>檢查表</button>
-                        <button onClick={() => setActiveTab('back')} className={`flex flex-col items-center gap-1 text-[10px] font-bold transition-all ${activeTab === 'back' ? 'scale-105' : 'opacity-50'}`} style={{ color: activeTab === 'back' ? COLORS.mediumBlue : COLORS.darkText }}><i className="fa-solid fa-cloud-arrow-down text-base"></i>備份</button>
-                    </nav>
                 </div>
             );
         };
