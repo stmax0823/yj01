@@ -267,7 +267,7 @@
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = `旅遊小幫手2.0_備份檔_${currentTrip.country}_${new Date().toISOString().slice(0,10)}.json`;
+                link.download = `旅遊小幫手3.0_備份檔_${currentTrip.country}_${new Date().toISOString().slice(0,10)}.json`;
                 link.click();
                 URL.revokeObjectURL(url);
                 showToast("備份檔已下載！");
@@ -1038,7 +1038,7 @@
                         <div className="p-6 border-b flex items-center gap-3 bg-slate-50">
                             <span className="text-3xl">✈️</span>
                             <div>
-                                <h2 className="font-black text-slate-800 tracking-tight">旅遊小幫手 2.0</h2>
+                                <h2 className="font-black text-slate-800 tracking-tight">旅遊小幫手 3.0</h2>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase">Navigation Menu</p>
                             </div>
                         </div>
