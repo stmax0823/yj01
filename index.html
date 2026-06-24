@@ -616,19 +616,20 @@
                 const [itemText, setItemText] = useState('');
                 const [itemCost, setItemCost] = useState('');
                 const [itemQty, setItemQty] = useState('1');
+                const [itemImage, setItemImage] = useState(null);
                 const [editingId, setEditingId] = useState(null);
 
                 const handleAddItem = () => {
                     if (!itemText || !itemCost) return;
                     if (editingId) {
-                        setShoppingList(shoppingList.map(item => item.id === editingId ? { ...item, text: itemText, cost: Number(itemCost), qty: Number(itemQty) } : item));
+                        setShoppingList(shoppingList.map(item => item.id === editingId ? { ...item, text: itemText, cost: Number(itemCost), qty: Number(itemQty), image: itemImage } : item));
                         setEditingId(null);
                         showToast("商品已更新！");
                     } else {
-                        setShoppingList([...shoppingList, { id: Date.now(), text: itemText, cost: Number(itemCost), qty: Number(itemQty), checked: false }]);
+                        setShoppingList([...shoppingList, { id: Date.now(), text: itemText, cost: Number(itemCost), qty: Number(itemQty), checked: false, image: itemImage }]);
                         showToast("商品已加入試算清單！");
                     }
-                    setItemText(''); setItemCost(''); setItemQty('1');
+                    setItemText(''); setItemCost(''); setItemQty('1'); setItemImage(null);
                 };
 
                 const handleEdit = (item) => {
@@ -636,6 +637,7 @@
                     setItemText(item.text);
                     setItemCost(item.cost.toString());
                     setItemQty(item.qty.toString());
+                    setItemImage(item.image || null);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 };
 
@@ -644,6 +646,12 @@
                     setItemText('');
                     setItemCost('');
                     setItemQty('1');
+                    setItemImage(null);
+                };
+
+                const handleImageUpload = (e) => {
+                    const file = e.target.files[0];
+                    if (file) compressImage(file, (base64) => setItemImage(base64));
                 };
 
                 const toggleCheck = (id) => setShoppingList(shoppingList.map(item => item.id === id ? { ...item, checked: !item.checked } : item));
@@ -670,6 +678,18 @@
                                 <div className="flex gap-2">
                                     <input type="number" placeholder={`金額 (${currency.code})`} className="flex-1 p-2 border rounded-lg text-sm bg-white" value={itemCost} onChange={e => setItemCost(e.target.value)} />
                                     <input type="number" placeholder="數量" className="w-20 p-2 border rounded-lg text-sm bg-white" value={itemQty} onChange={e => setItemQty(e.target.value)} />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <label className="flex-1 flex items-center justify-center gap-2 p-2 border-2 border-dashed rounded-lg text-xs font-bold text-gray-400 cursor-pointer hover:bg-gray-50">
+                                        <i className="fa-solid fa-camera"></i> {itemImage ? '更換圖片' : '上傳商品圖片'}
+                                        <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                                    </label>
+                                    {itemImage && (
+                                        <div className="relative">
+                                            <img src={itemImage} className="w-10 h-10 object-cover rounded-lg border" alt="preview" />
+                                            <button onClick={() => setItemImage(null)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[8px]"><i className="fa-solid fa-xmark"></i></button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="flex gap-2">
@@ -698,6 +718,7 @@
                                 <div key={item.id} className="p-3 flex items-center justify-between gap-2">
                                     <div className="flex items-center gap-3 flex-1">
                                         <input type="checkbox" checked={item.checked} onChange={() => toggleCheck(item.id)} className="w-4 h-4 rounded text-blue-600 focus:ring-0 border-gray-300" />
+                                        {item.image && <img src={item.image} className="w-12 h-12 object-cover rounded-lg border shadow-sm" alt="" />}
                                         <div className={item.checked ? "line-through text-gray-400 text-sm" : "text-sm text-gray-800"}>
                                             <p className="font-medium">{item.text}</p>
                                             <p className="text-xs text-gray-500">{currency.symbol}{item.cost} × {item.qty}件 → 折合約 NT$ {getTwdEquivalent(item.cost * item.qty, currency.code, exchangeRate)}</p>
@@ -987,36 +1008,78 @@
                 );
             };
 
-            // --- 介面渲染: 備份還原 ---
-            const RenderBackup = () => (
-                <div className="p-4 pb-24 space-y-4">
-                    <h2 className="text-xl font-bold mb-1" style={{ color: COLORS.darkText }}>資料備份與還原</h2>
-                    <p className="text-xs text-gray-500 mb-4">您的所有旅遊數據皆完整保存在此瀏覽器中。可匯出成 JSON 檔案跨裝置備份。</p>
-                    
-                    <div className="bg-white p-5 rounded-xl border shadow-sm space-y-4">
-                        <div>
-                            <h4 className="font-bold text-sm mb-1 text-gray-800">匯出本地完整數據備份</h4>
-                            <p className="text-xs text-gray-400 mb-3">包含完整行程、美食購物、計帳與所有分類設定。</p>
-                            <button onClick={handleExportData} className="w-full py-2.5 rounded-lg text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm" style={{ backgroundColor: COLORS.mediumBlue }}><i className="fa-solid fa-download"></i> 立即下載備份檔案 (.json)</button>
+            // --- 介面渲染: 小工具箱 (匯率、備份、重設) ---
+            const RenderTools = () => {
+                const [calcAmount, setCalcAmount] = useState('');
+                const [calcCurrency, setCalcCurrency] = useState(currency.code);
+                
+                const calcResult = useMemo(() => {
+                    if (!calcAmount || isNaN(calcAmount)) return { twd: 0, foreign: 0 };
+                    const rateObj = CURRENCIES.find(c => c.code === calcCurrency);
+                    const currentRate = (calcCurrency === currency.code) ? exchangeRate : (rateObj ? rateObj.defaultRate : 1);
+                    return {
+                        twd: Math.ceil(Number(calcAmount) / currentRate),
+                        foreign: Math.ceil(Number(calcAmount) * currentRate)
+                    };
+                }, [calcAmount, calcCurrency, exchangeRate, currency]);
+
+                return (
+                    <div className="p-4 pb-24 space-y-6">
+                        {/* 即時匯率換算器 */}
+                        <div className="bg-white p-5 rounded-2xl border shadow-sm">
+                            <h3 className="font-bold text-sm mb-4 flex items-center gap-2" style={{ color: COLORS.darkText }}>
+                                <i className="fa-solid fa-calculator text-indigo-500"></i> 即時匯率快速換算
+                            </h3>
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-3 gap-2">
+                                    <input type="number" placeholder="輸入金額..." className="col-span-2 p-3 border rounded-xl text-sm bg-slate-50 font-bold" value={calcAmount} onChange={e => setCalcAmount(e.target.value)} />
+                                    <select className="p-3 border rounded-xl bg-white text-sm font-bold" value={calcCurrency} onChange={e => setCalcCurrency(e.target.value)}>
+                                        {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+                                    </select>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="p-4 rounded-xl border" style={{ backgroundColor: '#F0ECDD', borderColor: '#E5E0CC' }}>
+                                        <span className="text-[10px] font-bold text-gray-500 uppercase block mb-1">換算為台幣</span>
+                                        <div className="text-lg font-black text-slate-800">NT$ {calcResult.twd.toLocaleString()}</div>
+                                    </div>
+                                    <div className="p-4 rounded-xl border text-white" style={{ backgroundColor: '#8BA3C5', borderColor: '#7A92B4' }}>
+                                        <span className="text-[10px] font-bold text-white/80 uppercase block mb-1">台幣換算為 {calcCurrency}</span>
+                                        <div className="text-lg font-black text-white">{calcResult.foreign.toLocaleString()}</div>
+                                    </div>
+                                </div>
+                                <p className="text-[10px] text-gray-400 text-center font-medium italic">* 換算結果僅供參考，實際以交易匯率為準</p>
+                            </div>
                         </div>
-                        <hr />
-                        <div>
-                            <h4 className="font-bold text-sm mb-1 text-gray-800">匯入外部備份檔案</h4>
-                            <p className="text-xs text-gray-400 mb-3">注意：匯入將會完全覆蓋此瀏覽器當前的所有資料。</p>
-                            <label className="w-full py-2.5 rounded-lg bg-amber-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer hover:bg-amber-600 transition-colors">
-                                <i className="fa-solid fa-upload"></i> 選擇檔案並還原資料
-                                <input type="file" accept=".json" onChange={handleImportData} className="hidden" />
-                            </label>
+
+                        {/* 資料備份與還原 */}
+                        <div className="bg-white p-5 rounded-2xl border shadow-sm">
+                            <h3 className="font-bold text-sm mb-4 flex items-center gap-2" style={{ color: COLORS.darkText }}>
+                                <i className="fa-solid fa-cloud-arrow-up text-sky-500"></i> 資料雲端備份與還原
+                            </h3>
+                            <div className="space-y-4">
+                                <button onClick={handleExportData} className="w-full py-3 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm hover:opacity-90 transition-all" style={{ backgroundColor: COLORS.mediumBlue }}>
+                                    <i className="fa-solid fa-download"></i> 下載完整數據備份 (.json)
+                                </button>
+                                <label className="w-full py-3 rounded-xl bg-amber-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer hover:bg-amber-600 transition-all">
+                                    <i className="fa-solid fa-upload"></i> 匯入備份檔案並覆蓋資料
+                                    <input type="file" accept=".json" onChange={handleImportData} className="hidden" />
+                                </label>
+                            </div>
                         </div>
-                        <hr />
-                        <div>
-                            <h4 className="font-bold text-sm mb-1 text-gray-800">重設為初始狀態</h4>
-                            <p className="text-xs text-gray-400 mb-3">按下去就全部消失囉 要確。</p>
-                            <button onClick={handleResetData} className="w-full py-2.5 rounded-lg text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm hover:opacity-90 transition-opacity" style={{ backgroundColor: '#DC2626' }}><i className="fa-solid fa-rotate-left"></i> 清空所有資料並重設</button>
+
+                        {/* 危險區域 */}
+                        <div className="bg-red-50 p-5 rounded-2xl border border-red-100 shadow-sm">
+                            <h3 className="font-bold text-sm mb-1 text-red-600 flex items-center gap-2">
+                                <i className="fa-solid fa-triangle-exclamation"></i> 危險區域
+                            </h3>
+                            <p className="text-[11px] text-red-400 mb-4 font-medium">按下去就全都消失囉 要確。</p>
+                            <button onClick={handleResetData} className="w-full py-3 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm bg-red-600 hover:bg-red-700 transition-all">
+                                <i className="fa-solid fa-rotate-left"></i> 清空
+                            </button>
                         </div>
                     </div>
-                </div>
-            );
+                );
+            };
 
             const menuItems = [
                 { id: 'dest', label: '目的地設定', icon: 'fa-map' },
@@ -1025,7 +1088,7 @@
                 { id: 'shop', label: '即時購物車', icon: 'fa-cart-shopping' },
                 { id: 'bill', label: '多人分帳記', icon: 'fa-comments-dollar' },
                 { id: 'prep', label: '行前檢查表', icon: 'fa-list-check' },
-                { id: 'back', label: '資料備份', icon: 'fa-cloud-arrow-down' }
+                { id: 'tools', label: '小工具', icon: 'fa-toolbox' }
             ];
 
             return (
@@ -1057,7 +1120,7 @@
                             ))}
                         </nav>
                         <div className="absolute bottom-6 left-6 right-6">
-                            <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-widest">Version 3.0 </p>
+                            <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-widest">Version 2.0.1 Stable</p>
                         </div>
                     </div>
 
@@ -1088,7 +1151,7 @@
                         {activeTab === 'shop' && <RenderShoppingList />}
                         {activeTab === 'bill' && <RenderSplitBill />}
                         {activeTab === 'prep' && <RenderPrepList />}
-                        {activeTab === 'back' && <RenderBackup />}
+                        {activeTab === 'tools' && <RenderTools />}
                     </main>
 
                     {toastMessage && (
