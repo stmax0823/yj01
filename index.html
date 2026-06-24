@@ -665,10 +665,12 @@
                         <p className="text-xs text-gray-500 mb-4">勾選已放入購物車的品項，即刻換算為台幣總額！</p>
                         
                         <div className="bg-white p-4 rounded-xl border shadow-sm mb-4">
-                            <div className="flex gap-2 mb-2">
-                                <input type="text" placeholder="商品名稱..." className="flex-1 p-2 border rounded-lg text-sm bg-white" value={itemText} onChange={e => setItemText(e.target.value)} />
-                                <input type="number" placeholder={`金額 (${currency.code})`} className="w-28 p-2 border rounded-lg text-sm bg-white" value={itemCost} onChange={e => setItemCost(e.target.value)} />
-                                <input type="number" placeholder="數量" className="w-16 p-2 border rounded-lg text-sm bg-white" value={itemQty} onChange={e => setItemQty(e.target.value)} />
+                            <div className="space-y-2 mb-3">
+                                <input type="text" placeholder="商品名稱..." className="w-full p-2 border rounded-lg text-sm bg-white" value={itemText} onChange={e => setItemText(e.target.value)} />
+                                <div className="flex gap-2">
+                                    <input type="number" placeholder={`金額 (${currency.code})`} className="flex-1 p-2 border rounded-lg text-sm bg-white" value={itemCost} onChange={e => setItemCost(e.target.value)} />
+                                    <input type="number" placeholder="數量" className="w-20 p-2 border rounded-lg text-sm bg-white" value={itemQty} onChange={e => setItemQty(e.target.value)} />
+                                </div>
                             </div>
                             <div className="flex gap-2">
                                 <button onClick={handleAddItem} className="flex-1 py-2 rounded-lg text-white font-bold text-sm" style={{ backgroundColor: COLORS.mediumBlue }}>
@@ -1055,7 +1057,7 @@
                             ))}
                         </nav>
                         <div className="absolute bottom-6 left-6 right-6">
-                            <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-widest">Version 2.0.1 Stable</p>
+                            <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-widest">Version 3.0 </p>
                         </div>
                     </div>
 
