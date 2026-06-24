@@ -361,7 +361,7 @@
                         <h3 className="font-bold mb-4 flex items-center gap-2" style={{ color: COLORS.darkText }}>
                             <i className="fa-solid fa-location-dot text-[18px]" style={{color: COLORS.mediumBlue}}></i> 設定目的地
                         </h3>
-                        <p className="text-xs text-gray-500 mb-4">設定後將自動載入即時天氣與匯率。資料已自動儲存！</p>
+                        <p className="text-xs text-gray-500 mb-4">設定後將自動載入即時天氣與匯率</p>
                         <CreatableSelect label="旅遊國家" options={Object.keys(destinations)} value={currentTrip.country} onChange={(v) => { setCurrentTrip({country: v, city: ''}); const c = CURRENCIES.find(x => ['KRW','JPY','USD','THB','TWD','CNY'].includes(x.code) && (v==='韓國'&&x.code==='KRW' || v==='日本'&&x.code==='JPY' || v==='美國'&&x.code==='USD' || v==='泰國'&&x.code==='THB' || v==='台灣'&&x.code==='TWD' || v==='中國'&&x.code==='CNY')); if(c) handleCurrencyChange(c.code); }} onAddOption={(newOpt) => { setDestinations({...destinations, [newOpt]: {}}); setStores({...stores, [newOpt]: []}); }} placeholder="選擇國家..." />
                         <div className={`${!currentTrip.country ? 'opacity-50 pointer-events-none' : ''}`}>
                             <CreatableSelect label="地區 / 城市" options={currentTrip.country ? Object.keys(destinations[currentTrip.country] || {}) : []} value={currentTrip.city} onChange={(v) => setCurrentTrip({...currentTrip, city: v})} onAddOption={(newOpt) => setDestinations({...destinations, [currentTrip.country]: {...(destinations[currentTrip.country]||{}), [newOpt]: []}})} placeholder={currentTrip.country ? "選擇城市..." : "請先選擇國家"} />
