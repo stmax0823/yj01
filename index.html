@@ -21,6 +21,10 @@
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         input, select, textarea { outline: none; }
         input:focus, select:focus, textarea:focus { border-color: #8BA3C5; }
+        
+        /* 新版航班樣式 */
+        .clear-btn { cursor: pointer; color: #94a3b8; transition: color 0.2s; }
+        .clear-btn:hover { color: #e11d48; }
     </style>
 </head>
 <body>
@@ -143,7 +147,7 @@
         };
 
         const App = () => {
-          const [activeTab, setActiveTab] = useState('flight');
+            const [activeTab, setActiveTab] = useState('flight');
             const [toastMessage, setToastMessage] = useState('');
             const [isDrawerOpen, setIsDrawerOpen] = useState(false);
             const showToast = (message) => { setToastMessage(message); setTimeout(() => setToastMessage(''), 2500); };
@@ -166,8 +170,8 @@
             const [itemTypes, setItemTypes] = useState(() => JSON.parse(localStorage.getItem('app_item_types_v6_expanded')) || INITIAL_ITEM_TYPES);
             const EMPTY_FLIGHT = { code: '', airline: '', departure: '', arrival: '', depAirport: '', arrAirport: '', depTerminal: '', arrTerminal: '', depGate: '', arrGate: '', depTime: '', arrTime: '', depActual: '', arrActual: '', duration: '', status: '準時', aircraft: '', baggage: '', delay: '' };
             const [flightInfo, setFlightInfo] = useState(() => JSON.parse(localStorage.getItem('app_flight_info_v6_expanded')) || { 
-                outbound: { ...EMPTY_FLIGHT },
-                return: { ...EMPTY_FLIGHT }
+                outbound: { flightNumber: 'KE 186', airline: '大韓航空', departureCode: 'TPE', arrivalCode: 'ICN', departureTime: '2026-06-25T08:30', arrivalTime: '2026-06-25T12:00', departureTerminal: '1', arrivalTerminal: '2' },
+                return: { flightNumber: 'KE 185', airline: '大韓航空', departureCode: 'ICN', arrivalCode: 'TPE', departureTime: '2026-06-30T14:30', arrivalTime: '2026-06-30T17:15', departureTerminal: '2', arrivalTerminal: '1' }
             });
             
             // 天氣狀態
@@ -270,7 +274,7 @@
             };
 
             const handleExportData = () => {
-                const dataToSave = { destinations, currentTrip, currency, exchangeRate, stores, foodTypes, itemTypes, itinerary, mustEats, mustBuys, shoppingList, splitMembers, splitExpenses, prepList };
+                const dataToSave = { destinations, currentTrip, currency, exchangeRate, stores, foodTypes, itemTypes, itinerary, mustEats, mustBuys, shoppingList, splitMembers, splitExpenses, prepList, flightInfo };
                 const blob = new Blob([JSON.stringify(dataToSave, null, 2)], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
@@ -302,6 +306,7 @@
                         if (d.splitMembers) setSplitMembers(d.splitMembers);
                         if (d.splitExpenses) setSplitExpenses(d.splitExpenses);
                         if (d.prepList) setPrepList(d.prepList);
+                        if (d.flightInfo) setFlightInfo(d.flightInfo);
                         showToast("🎉 資料匯入成功！");
                     } catch (err) { showToast("備份檔資料損毀！"); }
                 };
@@ -644,105 +649,90 @@
                             <div className="p-4 mb-5 rounded-lg bg-white border shadow-sm">
                                 <h3 className="font-bold text-xs mb-3">新增美食店家</h3>
                                 <input type="text" placeholder="店名 (必填)" className="w-full p-2 border rounded-lg text-sm mb-2" value={eatForm.name} onChange={e => setEatForm({...eatForm, name: e.target.value})} />
-                                <div className="grid grid-cols-2 gap-2 mb-2">
+                                <div className="grid grid-cols-2 gap-2 mb-3">
                                     <CreatableSelect label="美食分類" options={foodTypes} value={eatForm.type} onChange={v => setEatForm({...eatForm, type: v})} onAddOption={n => setFoodTypes([...foodTypes, n])} placeholder="選擇分類" />
-                                    <div className="flex flex-col gap-1"><label className="text-xs font-bold" style={{color: COLORS.darkText}}>預估費用</label>
-                                        
-										<div className="flex flex-col gap-1">
-    
-    <div className="flex gap-2 w-full">
-        <select className="w-20 p-2 border rounded-lg text-xs bg-white shrink-0" value={eatForm.currency} onChange={e => setEatForm({...eatForm, currency: e.target.value})}>
-            {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
-        </select>
-        <input type="number" placeholder="金額" className="flex-1 p-2 border rounded-lg text-sm bg-white min-w-0" value={eatForm.cost} onChange={e => setEatForm({...eatForm, cost: e.target.value})} />
-    </div>
-</div>
-									
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-xs font-bold" style={{color: COLORS.darkText}}>預估費用</label>
+                                        <div className="flex gap-2 w-full">
+                                            <select className="w-20 p-2 border rounded-lg text-xs bg-white shrink-0 outline-none" value={eatForm.currency} onChange={e => setEatForm({...eatForm, currency: e.target.value})}>
+                                                {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+                                            </select>
+                                            <input type="number" placeholder="金額" className="flex-1 p-2 border rounded-lg text-sm bg-white min-w-0 outline-none" value={eatForm.cost} onChange={e => setEatForm({...eatForm, cost: e.target.value})} />
+                                        </div>
                                     </div>
                                 </div>
-                                <input type="text" placeholder="地圖或介紹網址 (選填)" className="w-full p-2 border rounded-lg text-sm mb-3" value={eatForm.url} onChange={e => setEatForm({...eatForm, url: e.target.value})} />
+                                <input type="text" placeholder="地圖或介紹網址 (選填)" className="w-full p-2 border rounded-lg text-sm mb-3 outline-none" value={eatForm.url} onChange={e => setEatForm({...eatForm, url: e.target.value})} />
                                 <div className="mb-3">
                                     <label className="block text-xs font-bold mb-1">上傳實拍/截圖</label>
                                     <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'eat')} className="text-xs text-gray-500 block w-full file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200" />
                                     {eatForm.image && <img src={eatForm.image} className="mt-2 h-20 w-20 object-cover rounded-lg border" alt="preview" />}
                                 </div>
-                                <button onClick={handleAddEat} className="w-full py-2 rounded-lg text-white font-bold text-sm" style={{ backgroundColor: COLORS.mediumBlue }}>儲存美食</button>
+                                <button onClick={handleAddEat} className="w-full py-2 rounded-lg text-white font-bold text-sm shadow-sm transition-all active:scale-95" style={{ backgroundColor: COLORS.mediumBlue }}>儲存美食</button>
                             </div>
                         )}
 
                         {showForm && mustGoType === 'buy' && (
                             <div className="p-4 mb-5 rounded-lg bg-white border shadow-sm">
                                 <h3 className="font-bold text-xs mb-3">新增必買項目</h3>
-                                <input type="text" placeholder="商品名稱/備註 (必填)" className="w-full p-2 border rounded-lg text-sm mb-3" value={buyForm.notes} onChange={e => setBuyForm({...buyForm, notes: e.target.value})} />
-                                <div className="space-y-3 mb-3">
+                                <input type="text" placeholder="商品名稱/備註 (必填)" className="w-full p-2 border rounded-lg text-sm mb-3 outline-none" value={buyForm.notes} onChange={e => setBuyForm({...buyForm, notes: e.target.value})} />
+                                <div className="grid grid-cols-2 gap-2 mb-3">
                                     <CreatableSelect label="購買店家" options={stores[currentTrip.country] || []} value={buyForm.store} onChange={v => setBuyForm({...buyForm, store: v})} onAddOption={n => setStores({...stores, [currentTrip.country]: [...(stores[currentTrip.country]||[]), n]})} placeholder="選擇商店" />
                                     <CreatableSelect label="品項分類" options={itemTypes} value={buyForm.type} onChange={v => setBuyForm({...buyForm, type: v})} onAddOption={n => setItemTypes([...itemTypes, n])} placeholder="選擇分類" />
-                                    <div className="flex flex-col gap-1"><label className="text-xs font-bold" style={{color: COLORS.darkText}}>預估費用</label>
-                                        <div className="flex gap-1">
-                                            <select className="w-16 p-2 border rounded-lg text-xs bg-white" value={buyForm.currency} onChange={e => setBuyForm({...buyForm, currency: e.target.value})}>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 mb-3">
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-xs font-bold" style={{color: COLORS.darkText}}>預估費用</label>
+                                        <div className="flex gap-2 w-full">
+                                            <select className="w-20 p-2 border rounded-lg text-xs bg-white shrink-0 outline-none" value={buyForm.currency} onChange={e => setBuyForm({...buyForm, currency: e.target.value})}>
                                                 {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
                                             </select>
-                                            <input type="number" placeholder="金額" className="flex-1 p-2 border rounded-lg text-sm bg-white" value={buyForm.cost} onChange={e => setBuyForm({...buyForm, cost: e.target.value})} />
+                                            <input type="number" placeholder="金額" className="flex-1 p-2 border rounded-lg text-sm bg-white min-w-0 outline-none" value={buyForm.cost} onChange={e => setBuyForm({...buyForm, cost: e.target.value})} />
                                         </div>
                                     </div>
-                                    <div className="flex flex-col gap-1"><label className="text-xs font-bold" style={{color: COLORS.darkText}}>參考連結</label>
-                                    <input type="text" placeholder="網址" className="w-full p-2 border rounded-lg text-sm bg-white" value={buyForm.url} onChange={e => setBuyForm({...buyForm, url: e.target.value})} /></div>
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-xs font-bold" style={{color: COLORS.darkText}}>參考連結</label>
+                                        <input type="text" placeholder="網址" className="w-full p-2 border rounded-lg text-sm bg-white outline-none" value={buyForm.url} onChange={e => setBuyForm({...buyForm, url: e.target.value})} />
+                                    </div>
                                 </div>
                                 <div className="mb-3">
                                     <label className="block text-xs font-bold mb-1">上傳商品截圖</label>
                                     <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'buy')} className="text-xs text-gray-500 block w-full file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200" />
                                     {buyForm.image && <img src={buyForm.image} className="mt-2 h-20 w-20 object-cover rounded-lg border" alt="preview" />}
                                 </div>
-                                <button onClick={handleAddBuy} className="w-full py-2 rounded-lg text-white font-bold text-sm" style={{ backgroundColor: COLORS.mediumBlue }}>儲存購物項目</button>
+                                <button onClick={handleAddBuy} className="w-full py-2 rounded-lg text-white font-bold text-sm shadow-sm transition-all active:scale-95" style={{ backgroundColor: COLORS.mediumBlue }}>儲存購物項目</button>
                             </div>
                         )}
 
-                        {mustGoType === 'eat' ? (
-                            <div className="grid grid-cols-2 gap-3">
-                                {mustEats.map(item => (
-                                    <div key={item.id} className="bg-white rounded-xl overflow-hidden border shadow-sm flex flex-col justify-between">
+                        <div className="space-y-3">
+                            {(mustGoType === 'eat' ? mustEats : mustBuys).map(item => (
+                                <div key={item.id} className="bg-white rounded-xl overflow-hidden border shadow-sm flex h-28 animate-slide">
+                                    <div className="w-28 flex-shrink-0">
+                                        {item.image ? <img src={item.image} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400"><i className={`fa-solid ${mustGoType === 'eat' ? 'fa-utensils' : 'fa-bag-shopping'} text-xl`}></i></div>}
+                                    </div>
+                                    <div className="flex-1 p-2 flex flex-col justify-between min-w-0">
                                         <div>
-                                            {item.image ? <img src={item.image} className="w-full h-32 object-cover" alt="" /> : <div className="w-full h-24 bg-gray-100 flex items-center justify-center text-gray-400"><i className="fa-solid fa-utensils text-2xl"></i></div>}
-                                            <div className="p-3">
-                                                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold text-white" style={{ backgroundColor: COLORS.lightBlue }}>{item.type || '未分類'}</span>
-                                                <h4 className="font-bold text-sm mt-1 text-gray-800 line-clamp-1">{item.name}</h4>
-                                                {item.cost && <p className="text-xs text-orange-600 font-bold mt-1">{item.currency || currency.code} {item.cost}</p>}
+                                            <div className="flex gap-1 flex-wrap mb-1">
+                                                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold text-white" style={{ backgroundColor: COLORS.lightBlue }}>{item.type || '未分類'}</span>
+                                                {mustGoType === 'buy' && <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold text-white bg-slate-400">{item.store || '不限店家'}</span>}
                                             </div>
+                                            <h4 className="font-bold text-sm text-gray-800 line-clamp-1">{item.name || item.notes}</h4>
+                                            {item.cost && <p className="text-[11px] text-orange-600 font-bold mt-0.5">{item.currency || currency.code} {item.cost}</p>}
                                         </div>
-                                        <div className="p-2 bg-gray-50 border-t flex justify-between gap-1">
-                                            <button onClick={() => setAddToItinModal({ isOpen: true, item })} className="flex-1 text-[11px] font-bold py-1 px-2 rounded bg-emerald-500 text-white flex items-center justify-center gap-0.5 shadow-sm"><i className="fa-solid fa-calendar-plus"></i> 排行程</button>
-                                            <button onClick={() => handleEditMustGo(item, 'eat')} className="p-1 text-xs bg-indigo-500 text-white rounded text-center w-7 shadow-sm"><i className="fa-solid fa-pen"></i></button>
-                                            {item.url && <a href={item.url} target="_blank" rel="noreferrer" className="p-1 text-xs bg-blue-500 text-white rounded text-center w-7 shadow-sm"><i className="fa-solid fa-map-location-dot"></i></a>}
-                                            <button onClick={() => setMustEats(mustEats.filter(x => x.id !== item.id))} className="p-1 text-xs bg-red-400 text-white rounded text-center w-7 shadow-sm"><i className="fa-solid fa-trash"></i></button>
+                                        <div className="flex justify-end gap-1.5 mt-1">
+                                            {mustGoType === 'eat' ? (
+                                                <button onClick={() => setAddToItinModal({ isOpen: true, item })} className="px-2 py-1 rounded bg-emerald-500 text-white text-[10px] font-bold shadow-sm"><i className="fa-solid fa-calendar-plus"></i> 排行程</button>
+                                            ) : (
+                                                <button onClick={() => handleAddToCart(item)} className="px-2 py-1 rounded bg-orange-500 text-white text-[10px] font-bold shadow-sm"><i className="fa-solid fa-cart-plus"></i> 購物車</button>
+                                            )}
+                                            <button onClick={() => handleEditMustGo(item, mustGoType)} className="w-7 h-7 flex items-center justify-center bg-indigo-500 text-white rounded shadow-sm text-[10px]"><i className="fa-solid fa-pen"></i></button>
+                                            {item.url && <a href={item.url} target="_blank" rel="noreferrer" className="w-7 h-7 flex items-center justify-center bg-blue-500 text-white rounded shadow-sm text-[10px]"><i className={`fa-solid ${mustGoType === 'eat' ? 'fa-map-location-dot' : 'fa-link'}`}></i></a>}
+                                            <button onClick={() => mustGoType === 'eat' ? setMustEats(mustEats.filter(x => x.id !== item.id)) : setMustBuys(mustBuys.filter(x => x.id !== item.id))} className="w-7 h-7 flex items-center justify-center bg-red-400 text-white rounded shadow-sm text-[10px]"><i className="fa-solid fa-trash"></i></button>
                                         </div>
                                     </div>
-                                ))}
-                                {mustEats.length === 0 && <p className="text-center col-span-2 text-gray-500 py-10 text-xs">尚無口袋美食資訊。</p>}
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-2 gap-3">
-                                {mustBuys.map(item => (
-                                    <div key={item.id} className="bg-white rounded-xl overflow-hidden border shadow-sm flex flex-col justify-between">
-                                        <div>
-                                            {item.image ? <img src={item.image} className="w-full h-32 object-cover" alt="" /> : <div className="w-full h-24 bg-gray-100 flex items-center justify-center text-gray-400"><i className="fa-solid fa-bag-shopping text-2xl"></i></div>}
-                                            <div className="p-3">
-                                                <div className="flex gap-1 flex-wrap"><span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-500 text-white">{item.store || '不限店家'}</span>
-                                                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-500 text-white">{item.type || '未分類'}</span></div>
-                                                <h4 className="font-bold text-sm mt-1.5 text-gray-800 line-clamp-2">{item.notes}</h4>
-                                                {item.cost && <p className="text-xs text-orange-600 font-bold mt-1">{item.currency || currency.code} {item.cost}</p>}
-                                            </div>
-                                        </div>
-                                        <div className="p-2 bg-gray-50 border-t flex justify-between gap-1">
-                                            <button onClick={() => handleAddToCart(item)} className="flex-1 text-[11px] font-bold py-1 px-2 rounded bg-orange-500 text-white flex items-center justify-center gap-0.5 shadow-sm"><i className="fa-solid fa-cart-plus"></i> 購物車</button>
-                                            <button onClick={() => handleEditMustGo(item, 'buy')} className="p-1 text-xs bg-indigo-500 text-white rounded text-center w-7 shadow-sm"><i className="fa-solid fa-pen"></i></button>
-                                            {item.url && <a href={item.url} target="_blank" rel="noreferrer" className="p-1 text-xs bg-blue-500 text-white rounded text-center w-7 shadow-sm"><i className="fa-solid fa-link"></i></a>}
-                                            <button onClick={() => setMustBuys(mustBuys.filter(x => x.id !== item.id))} className="p-1 text-xs bg-red-400 text-white rounded text-center w-7 shadow-sm"><i className="fa-solid fa-trash"></i></button>
-                                        </div>
-                                    </div>
-                                ))}
-                                {mustBuys.length === 0 && <p className="text-center col-span-2 text-gray-500 py-10 text-xs">尚無必買商品資訊。</p>}
-                            </div>
-                        )}
+                                </div>
+                            ))}
+                            {(mustGoType === 'eat' ? mustEats : mustBuys).length === 0 && <p className="text-center text-gray-500 py-10 text-xs">尚無相關資訊。</p>}
+                        </div>
                     </div>
                 );
             };
@@ -848,20 +838,7 @@
                             </div>
                         </div>
 
-                        <div className="text-white rounded-xl p-4 shadow-md mb-4 border" style={{ backgroundColor: '#23354D', borderColor: '#23354D' }}>
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <span className="text-xs block font-bold text-white/80 mb-1">已選購商品</span>
-                                    <span className="text-sm text-white/60">{shoppingList.filter(i => i.checked).length} 件</span>
-                                </div>
-                                <div className="text-right">
-                                    <span className="text-xs block font-bold text-white/80 mb-1">預估總計 (NT$)</span>
-                                    <span className="text-2xl font-black text-white">NT$ {totals.twd?.toLocaleString() || 0}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-xl border shadow-sm divide-y">
+                        <div className="bg-white rounded-xl border shadow-sm divide-y mb-4">
                             {shoppingList.map(item => (
                                 <div key={item.id} className="p-3 flex items-center justify-between gap-2">
                                     <div className="flex items-center gap-3 flex-1">
@@ -880,6 +857,17 @@
                                 </div>
                             ))}
                             {shoppingList.length === 0 && <p className="text-center text-gray-500 py-10 text-xs">購物車內尚無品項。</p>}
+                        </div>
+
+                        <div className="rounded-xl shadow-md mb-4 border overflow-hidden flex flex-col">
+                            <div className="p-4 flex justify-between items-center text-white" style={{ backgroundColor: '#23354D' }}>
+                                <span className="text-xs font-bold text-white/80">預估總計 (NT$)</span>
+                                <span className="text-2xl font-black text-white">NT$ {totals.twd?.toLocaleString() || 0}</span>
+                            </div>
+                            <div className="bg-white p-4 flex justify-between items-center border-t">
+                                <span className="text-xs font-bold text-gray-500">小計 ({currency.code})</span>
+                                <span className="text-lg font-black text-gray-800">{currency.symbol}{totals.foreign.toLocaleString()}</span>
+                            </div>
                         </div>
                     </div>
                 );
@@ -1157,122 +1145,191 @@
                 );
             };
 
-            // --- 介面渲染: 航班資訊 (純手動版) ---
+            // --- 全球/韓國航空資料庫 (用於新版航班) ---
+            const AIRLINE_DB = {
+                '大韓航空': { code: 'KE', bg: '0064B0' },
+                '韓亞航空': { code: 'OZ', bg: '4A4843' },
+                '濟州航空': { code: '7C', bg: 'FF5000' },
+                '德威航空': { code: 'TW', bg: 'D22C2A' },
+                '真航空': { code: 'LJ', bg: '009000' },
+                '首爾航空': { code: 'RS', bg: '00B0B9' },
+                '釜山航空': { code: 'BX', bg: '003B7E' },
+                '中華航空': { code: 'CI', bg: '0D8ABC' },
+                '長榮航空': { code: 'BR', bg: '00A3A1' },
+                '星宇航空': { code: 'JX', bg: 'D4A373' },
+                '國泰航空': { code: 'CX', bg: '006564' },
+                '日本航空': { code: 'JL', bg: 'E3000F' },
+                '全日空': { code: 'NH', bg: '0033A0' },
+                '阿聯酋航空': { code: 'EK', bg: 'D71A21' },
+                '聯合航空': { code: 'UA', bg: '005DAA' },
+                '達美航空': { code: 'DL', bg: 'E3132C' },
+                '其他': { code: '✈️', bg: 'cbd5e1' }
+            };
+
+            // --- 介面渲染: 航班資訊 (新版終極介面) ---
             const RenderFlightInfo = () => {
-                const [searchType, setSearchType] = useState('outbound');
-                const [manualForm, setManualForm] = useState({ code: '', airline: '', departure: '', arrival: '', depTime: '', arrTime: '', depTerminal: '', arrTerminal: '', duration: '', baggage: '' });
+                const [isEditing, setIsEditing] = useState(false);
+                const [editTab, setEditTab] = useState('outbound');
+                const [formData, setFormData] = useState(JSON.parse(JSON.stringify(flightInfo)));
 
-                const saveManualFlight = () => {
-                    if (!manualForm.code) { showToast('❌ 請輸入航班編號'); return; }
-                    const newFlight = {
-                        code: manualForm.code.toUpperCase(),
-                        airline: manualForm.airline || '',
-                        departure: manualForm.departure.toUpperCase() || '',
-                        arrival: manualForm.arrival.toUpperCase() || '',
-                        depAirport: '', arrAirport: '',
-                        depTerminal: manualForm.depTerminal || '',
-                        arrTerminal: manualForm.arrTerminal || '',
-                        depGate: '', arrGate: '',
-                        depTime: manualForm.depTime || '',
-                        arrTime: manualForm.arrTime || '',
-                        depActual: '', arrActual: '',
-                        duration: manualForm.duration || '',
-                        status: '準時',
-                        aircraft: '',
-                        baggage: manualForm.baggage || '',
-                        delay: ''
-                    };
-                    setFlightInfo({ ...flightInfo, [searchType]: newFlight });
-                    setManualForm({ code: '', airline: '', departure: '', arrival: '', depTime: '', arrTime: '', depTerminal: '', arrTerminal: '', duration: '', baggage: '' });
-                    showToast('✅ 航班資訊已手動儲存');
+                const handleSave = (e) => {
+                    e.preventDefault();
+                    setFlightInfo(formData);
+                    setIsEditing(false);
+                    showToast('✅ 航班資訊已更新');
                 };
 
-                const deleteFlight = (type) => {
-                    if (window.confirm('確定要清除此航班資訊嗎？')) {
-                        const empty = { code: '', airline: '', departure: '', arrival: '', depAirport: '', arrAirport: '', depTerminal: '', arrTerminal: '', depGate: '', arrGate: '', depTime: '', arrTime: '', depActual: '', arrActual: '', duration: '', status: '準時', aircraft: '', baggage: '', delay: '' };
-                        setFlightInfo({ ...flightInfo, [type]: empty });
-                        showToast('已清除航班資訊');
-                    }
+                const formatTime = (isoStr) => {
+                    if (!isoStr) return '';
+                    const d = new Date(isoStr);
+                    return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
                 };
 
-                const FlightCard = ({ flight, type, label }) => {
+                const FlightDisplayCard = ({ type, label }) => {
+                    const data = flightInfo[type];
+                    if (!data.flightNumber && !data.code) return null;
+                    const flightNum = data.flightNumber || data.code;
+                    const airData = AIRLINE_DB[data.airline] || AIRLINE_DB['其他'];
+                    const logoUrl = `https://ui-avatars.com/api/?name=${airData.code}&background=${airData.bg}&color=fff&rounded=true&bold=true`;
+                    
                     return (
-                        <div style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)' }} className="rounded-3xl p-5 text-white shadow-2xl mb-4 relative overflow-hidden">
-                            <div className="flex justify-between items-start mb-5 relative">
-                                <div>
-                                    <p className="text-xs text-white/50 font-medium mb-1">{label}</p>
-                                    <h2 className="text-4xl font-black tracking-wider">{flight.code}</h2>
-                                    {flight.airline && <p className="text-xs text-white/60 mt-1">{flight.airline}</p>}
+                        <div className="bg-white rounded-xl shadow-sm border border-[#C4D8E5] overflow-hidden mb-3 animate-slide">
+                            <div className="bg-[#8EB1D1] px-3 py-1.5 flex justify-between items-center text-white">
+                                <div className="font-black tracking-widest text-[10px] flex items-center gap-1.5">
+                                    <i className={`fa-solid ${type === 'outbound' ? 'fa-plane-departure' : 'fa-plane-arrival'} text-[12px]`}></i> {label} {type.toUpperCase()}
                                 </div>
-                                <div className={`px-3 py-1.5 rounded-full bg-green-500/20 border border-white/10`}>
-                                    <span className={`text-xs font-bold text-green-400`}>{flight.status}</span>
-                                </div>
+                                <button onClick={() => { setEditTab(type); setFormData(JSON.parse(JSON.stringify(flightInfo))); setIsEditing(true); }} className="px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 shadow-sm bg-white/20 backdrop-blur-sm hover:bg-white/40 transition-colors">
+                                    <i className="fa-solid fa-pen-to-square"></i> 編輯
+                                </button>
                             </div>
-                            <div className="flex items-center gap-3 mb-5">
-                                <div className="flex-1">
-                                    <p className="text-4xl font-black tracking-widest">{flight.departure || '---'}</p>
-                                    {flight.depTerminal && <div className="mt-2"><span className="text-[10px] bg-white/15 px-2 py-0.5 rounded-full text-white/80">{/^[Tt]\d/.test(flight.depTerminal) ? flight.depTerminal.toUpperCase() : `T${flight.depTerminal}`}</span></div>}
-                                    <p className="text-sm font-bold mt-2 text-white">{flight.depTime}</p>
+                            
+                            <div className="p-3 flex justify-between items-start">
+                                <div className="text-center w-[28%] flex flex-col items-center">
+                                    <div className="text-3xl font-black leading-none tracking-tighter">{(data.departureCode || data.depAirport || '---').substring(0,3).toUpperCase()}</div>
+                                    <div className="text-[10px] font-bold text-slate-500 mt-1.5">{formatTime(data.departureTime || data.depTime)}</div>
+                                    <div className="text-[9px] bg-[#C4D8E5]/30 text-[#8EB1D1] font-bold px-1.5 py-0.5 rounded mt-1 inline-block">航廈 {data.departureTerminal || data.depTerminal || '-'}</div>
                                 </div>
-                                <div className="flex flex-col items-center gap-1 flex-shrink-0">
-                                    <div className="w-20 flex items-center gap-1"><div className="flex-1 h-px bg-white/30"></div><i className="fa-solid fa-plane text-white/70 text-sm"></i><div className="flex-1 h-px bg-white/30"></div></div>
+                                
+                                <div className="flex-1 flex flex-col items-center px-1 relative top-[-2px]">
+                                    <div className="text-[10px] font-black tracking-widest text-slate-700 bg-white px-1 z-10">{flightNum}</div>
+                                    <div className="w-full border-t-[1.5px] border-dashed border-[#C4D8E5] my-2 relative">
+                                        <i className={`fa-solid fa-plane text-[#8EB1D1] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 ${type === 'outbound' ? 'rotate-0' : 'rotate-180'} bg-white px-0.5`}></i>
+                                    </div>
+                                    <div className="flex items-center gap-1 bg-white px-1 rounded">
+                                        <img src={logoUrl} className="w-3.5 h-3.5 rounded-full shadow-sm object-cover" />
+                                        <span className="text-[9px] font-bold text-slate-500 whitespace-nowrap">{data.airline || '航空公司'}</span>
+                                    </div>
                                 </div>
-                                <div className="flex-1 text-right">
-                                    <p className="text-4xl font-black tracking-widest">{flight.arrival || '---'}</p>
-                                    {flight.arrTerminal && <div className="mt-2"><span className="text-[10px] bg-white/15 px-2 py-0.5 rounded-full text-white/80">{/^[Tt]\d/.test(flight.arrTerminal) ? flight.arrTerminal.toUpperCase() : `T${flight.arrTerminal}`}</span></div>}
-                                    <p className="text-sm font-bold mt-2 text-white">{flight.arrTime}</p>
+                                
+                                <div className="text-center w-[28%] flex flex-col items-center">
+                                    <div className="text-3xl font-black leading-none tracking-tighter">{(data.arrivalCode || data.arrAirport || '---').substring(0,3).toUpperCase()}</div>
+                                    <div className="text-[10px] font-bold text-slate-500 mt-1.5">{formatTime(data.arrivalTime || data.arrTime)}</div>
+                                    <div className="text-[9px] bg-[#C4D8E5]/30 text-[#8EB1D1] font-bold px-1.5 py-0.5 rounded mt-1 inline-block">航廈 {data.arrivalTerminal || data.arrTerminal || '-'}</div>
                                 </div>
-                            </div>
-                            <div className="border-t border-white/10 mb-4"></div>
-                            <div className="flex justify-end gap-2">
-                                <button onClick={() => deleteFlight(type)} className="py-2 px-4 rounded-xl bg-red-500/20 hover:bg-red-500/40 text-red-400 text-xs font-bold transition-all border border-red-500/20"><i className="fa-solid fa-trash"></i> 刪除此航班</button>
                             </div>
                         </div>
                     );
                 };
 
+                if (isEditing) {
+                    const currentData = formData[editTab];
+                    return (
+                        <div className="p-4 pb-24 animate-slide">
+                            <div className="bg-white rounded-xl shadow-md p-4 border-t-4 border-[#8EB1D1] w-full">
+                                <h2 className="text-sm font-bold flex items-center gap-1.5 text-slate-700 mb-3">
+                                    <i className="fa-solid fa-gear text-[#8EB1D1]"></i> 編輯行程細節
+                                </h2>
+
+                                <div className="flex bg-[#E8ECEF] p-1 rounded-lg mb-4">
+                                    <button type="button" onClick={() => setEditTab('outbound')} className={`flex-1 text-xs font-bold py-1.5 rounded-md transition-all ${editTab === 'outbound' ? 'bg-white text-[#8EB1D1] shadow-sm' : 'text-slate-500'}`}>🛫 去程</button>
+                                    <button type="button" onClick={() => setEditTab('return')} className={`flex-1 text-xs font-bold py-1.5 rounded-md transition-all ${editTab === 'return' ? 'bg-white text-[#8EB1D1] shadow-sm' : 'text-slate-500'}`}>🛬 回程</button>
+                                </div>
+
+                                <form onSubmit={handleSave} className="space-y-3">
+                                    <div className="flex gap-2">
+                                        <div className="flex-1">
+                                            <label className="text-[10px] font-bold text-slate-400">航班號碼</label>
+                                            <input type="text" value={currentData.flightNumber || currentData.code || ''} onChange={e => setFormData({...formData, [editTab]: {...currentData, flightNumber: e.target.value.toUpperCase(), code: e.target.value.toUpperCase()}})} className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1]" />
+                                        </div>
+                                        <div className="flex-[1.5]">
+                                            <label className="text-[10px] font-bold text-slate-400">航空公司</label>
+                                            <select value={currentData.airline || ''} onChange={e => setFormData({...formData, [editTab]: {...currentData, airline: e.target.value}})} className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1]">
+                                                <option value="">請選擇航空公司</option>
+                                                {Object.keys(AIRLINE_DB).map(name => <option key={name} value={name}>{name}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400">出發地</label>
+                                            <div className="relative">
+                                                <input type="text" value={currentData.departureCode || currentData.depAirport || ''} onChange={e => setFormData({...formData, [editTab]: {...currentData, departureCode: e.target.value.toUpperCase(), depAirport: e.target.value.toUpperCase()}})} className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1] pr-7" placeholder="例如: TPE" />
+                                                <i className="fa-solid fa-circle-xmark clear-btn absolute right-1.5 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center" onClick={() => setFormData({...formData, [editTab]: {...currentData, departureCode: '', depAirport: ''}})}></i>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400">目的地</label>
+                                            <div className="relative">
+                                                <input type="text" value={currentData.arrivalCode || currentData.arrAirport || ''} onChange={e => setFormData({...formData, [editTab]: {...currentData, arrivalCode: e.target.value.toUpperCase(), arrAirport: e.target.value.toUpperCase()}})} className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1] pr-7" placeholder="例如: ICN" />
+                                                <i className="fa-solid fa-circle-xmark clear-btn absolute right-1.5 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center" onClick={() => setFormData({...formData, [editTab]: {...currentData, arrivalCode: '', arrAirport: ''}})}></i>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-6 pt-1">
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 block mb-1">出發時間</label>
+                                            <input type="datetime-local" value={currentData.departureTime || currentData.depTime || ''} onChange={e => setFormData({...formData, [editTab]: {...currentData, departureTime: e.target.value, depTime: e.target.value}})} className="w-full bg-[#E8ECEF] rounded p-2 text-[10px] font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1]" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 block mb-1">到達時間</label>
+                                            <input type="datetime-local" value={currentData.arrivalTime || currentData.arrTime || ''} onChange={e => setFormData({...formData, [editTab]: {...currentData, arrivalTime: e.target.value, arrTime: e.target.value}})} className="w-full bg-[#E8ECEF] rounded p-2 text-[10px] font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1]" />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 block mb-1">起飛航廈</label>
+                                            <input type="text" value={currentData.departureTerminal || currentData.depTerminal || ''} onChange={e => setFormData({...formData, [editTab]: {...currentData, departureTerminal: e.target.value, depTerminal: e.target.value}})} className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold uppercase outline-none focus:ring-1 focus:ring-[#8EB1D1]" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 block mb-1">降落航廈</label>
+                                            <input type="text" value={currentData.arrivalTerminal || currentData.arrTerminal || ''} onChange={e => setFormData({...formData, [editTab]: {...currentData, arrivalTerminal: e.target.value, arrTerminal: e.target.value}})} className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold uppercase outline-none focus:ring-1 focus:ring-[#8EB1D1]" />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-2 pt-3 border-t border-slate-100 mt-2">
+                                        <button type="button" onClick={() => setIsEditing(false)} className="flex-1 bg-slate-100 text-slate-500 font-bold py-2 rounded-lg text-[11px]">取消</button>
+                                        <button type="submit" className="flex-[2] bg-[#8EB1D1] text-white font-bold py-2 rounded-lg text-[11px] shadow-sm flex justify-center items-center gap-1">
+                                            <i className="fa-solid fa-floppy-disk"></i> 儲存設定
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    );
+                }
+
                 return (
-                    <div className="p-4 pb-24 no-scrollbar">
-                        <div className="bg-gradient-to-br from-sky-500 to-indigo-600 rounded-3xl p-5 text-white shadow-xl relative overflow-hidden mt-2 mb-5">
-                            <div className="absolute -right-8 -bottom-8 opacity-10 text-[130px]"><i className="fa-solid fa-plane"></i></div>
-                            <h2 className="text-xl font-black mb-1 flex items-center gap-2"><i className="fa-solid fa-ticket-simple text-[20px]"></i> 航班訊息</h2>
-                            <p className="text-sm opacity-80">手動輸入航班資訊</p>
-                        </div>
-
-                        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-5">
-                            <div className="flex gap-2 mb-3">
-                                <button onClick={() => setSearchType('outbound')} className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${searchType === 'outbound' ? 'text-white shadow-sm' : 'bg-gray-100 text-gray-500'}`} style={{ backgroundColor: searchType === 'outbound' ? COLORS.mediumBlue : '' }}>去程</button>
-                                <button onClick={() => setSearchType('return')} className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${searchType === 'return' ? 'text-white shadow-sm' : 'bg-gray-100 text-gray-500'}`} style={{ backgroundColor: searchType === 'return' ? COLORS.mediumBlue : '' }}>回程</button>
+                    <div className="p-4 pb-24">
+                        <FlightDisplayCard type="outbound" label="去程" />
+                        <FlightDisplayCard type="return" label="回程" />
+                        
+                        {(!flightInfo.outbound.flightNumber && !flightInfo.outbound.code && !flightInfo.return.flightNumber && !flightInfo.return.code) && (
+                            <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
+                                <i className="fa-solid fa-plane-arrival text-4xl text-gray-200 mb-4"></i>
+                                <p className="text-gray-400 text-xs">尚無航班資訊，請點擊上方編輯新增</p>
                             </div>
+                        )}
 
-                            <div className="space-y-2">
-                                <input type="text" placeholder="航班編號 (必填，例: BR123)" className="w-full p-2.5 border border-gray-200 rounded-xl text-sm font-mono uppercase bg-gray-50" value={manualForm.code} onChange={e => setManualForm({...manualForm, code: e.target.value.toUpperCase()})} />
-                                <input type="text" placeholder="航空公司 (例: 長榮航空)" className="w-full p-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50" value={manualForm.airline} onChange={e => setManualForm({...manualForm, airline: e.target.value})} />
-                                <div className="grid grid-cols-2 gap-2">
-                                    <input type="text" placeholder="出發地 (如 TPE)" className="p-2.5 border border-gray-200 rounded-xl text-sm font-mono uppercase bg-gray-50" value={manualForm.departure} onChange={e => setManualForm({...manualForm, departure: e.target.value.toUpperCase()})} />
-                                    <input type="text" placeholder="目的地 (如 NRT)" className="p-2.5 border border-gray-200 rounded-xl text-sm font-mono uppercase bg-gray-50" value={manualForm.arrival} onChange={e => setManualForm({...manualForm, arrival: e.target.value.toUpperCase()})} />
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <input type="text" placeholder="起飛 (例: 6/25 17:00)" className="p-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50" value={manualForm.depTime} onChange={e => setManualForm({...manualForm, depTime: e.target.value})} />
-                                    <input type="text" placeholder="降落 (例: 6/25 21:00)" className="p-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50" value={manualForm.arrTime} onChange={e => setManualForm({...manualForm, arrTime: e.target.value})} />
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <input type="text" placeholder="出發航廈 (例: T2)" className="p-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50" value={manualForm.depTerminal} onChange={e => setManualForm({...manualForm, depTerminal: e.target.value})} />
-                                    <input type="text" placeholder="抵達航廈 (例: T1)" className="p-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50" value={manualForm.arrTerminal} onChange={e => setManualForm({...manualForm, arrTerminal: e.target.value})} />
-                                </div>
-                                <button onClick={saveManualFlight} className="w-full py-3 rounded-xl text-white font-bold text-sm shadow-md mt-2" style={{ backgroundColor: COLORS.mediumBlue }}>儲存航班資訊</button>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            {flightInfo.outbound.code && <FlightCard flight={flightInfo.outbound} type="outbound" label="去程航班" />}
-                            {flightInfo.return.code && <FlightCard flight={flightInfo.return} type="return" label="回程航班" />}
-                            {!flightInfo.outbound.code && !flightInfo.return.code && (
-                                <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
-                                    <i className="fa-solid fa-plane-arrival text-4xl text-gray-200 mb-4"></i>
-                                    <p className="text-gray-400 text-xs">尚無航班資訊，請由上方手動新增</p>
-                                </div>
-                            )}
+                        <div className="mt-5 text-center">
+                            <button onClick={() => { 
+                                if(window.confirm('確定要重設所有航班資訊嗎？')) {
+                                    localStorage.removeItem('app_flight_info_v6_expanded');
+                                    window.location.reload();
+                                }
+                            }} className="text-[10px] text-gray-400 underline underline-offset-2">重設為預設航班</button>
                         </div>
                     </div>
                 );
