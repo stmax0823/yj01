@@ -11,9 +11,11 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
-    <style>
+     <style>
         body { margin: 0; padding: 0; background-color: #E8ECEF; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent;}
         .app-container { max-width: 480px; margin: 0 auto; background-color: #E8ECEF; min-height: 100vh; position: relative; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; overflow-x: hidden; }
         .content-area { flex: 1; overflow-y: auto; padding-bottom: 20px; }
@@ -587,14 +589,13 @@
             );
         };
 
-        // --- 購物車元件 (已補回日期欄位) ---
         const RenderShoppingList = ({ shoppingList, setShoppingList, currency, exchangeRate, showToast, handleCurrencyChange }) => {
             const [itemText, setItemText] = useState('');
             const [itemCost, setItemCost] = useState('');
             const [itemQty, setItemQty] = useState('1');
             const [itemImage, setItemImage] = useState(null);
             const [itemNotes, setItemNotes] = useState('');
-            const [itemDate, setItemDate] = useState(''); // 📌 新增日期狀態
+            const [itemDate, setItemDate] = useState(''); 
             const [editingId, setEditingId] = useState(null);
 
             const handleAddItem = () => {
@@ -617,7 +618,7 @@
                 setItemQty(item.qty.toString());
                 setItemImage(item.image || null);
                 setItemNotes(item.notes || '');
-                setItemDate(item.date || ''); // 📌 讀取日期
+                setItemDate(item.date || ''); 
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             };
 
@@ -628,7 +629,7 @@
                 setItemQty('1');
                 setItemImage(null);
                 setItemNotes('');
-                setItemDate(''); // 📌 清空日期
+                setItemDate(''); 
             };
 
             const handleImageUpload = (e) => {
@@ -664,7 +665,6 @@
                         <div className="space-y-2 mb-3">
                             <input type="text" placeholder="商品名稱..." className="w-full p-2 border rounded-lg text-sm bg-white" value={itemText} onChange={e => setItemText(e.target.value)} />
                             
-                            {/* 📌 修改版面，加入日期選擇框 */}
                             <div className="flex gap-2">
                                 <input type="number" placeholder={`金額 (${currency.code})`} className="w-1/3 p-2 border rounded-lg text-sm bg-white" value={itemCost} onChange={e => setItemCost(e.target.value)} />
                                 <input type="number" placeholder="數量" className="w-1/4 p-2 border rounded-lg text-sm bg-white" value={itemQty} onChange={e => setItemQty(e.target.value)} />
@@ -710,26 +710,26 @@
 
                     <div className="bg-white rounded-xl border shadow-sm divide-y">
                         {shoppingList.map(item => (
-                            <div key={item.id} className="p-3 flex items-center justify-between gap-2">
+                            <div key={item.id} className="p-3 flex items-center justify-between gap-2 hover:bg-gray-50/50 transition-colors">
                                 <div className="flex items-center gap-3 flex-1">
-                                    <input type="checkbox" checked={item.checked} onChange={() => toggleCheck(item.id)} className="w-4 h-4 rounded text-blue-600 focus:ring-0 border-gray-300" />
+                                    <input type="checkbox" checked={item.checked} onChange={() => toggleCheck(item.id)} className="w-4.5 h-4.5 rounded text-blue-600 focus:ring-0 border-gray-300" />
                                     {item.image && <img src={item.image} className="w-12 h-12 object-cover rounded-lg border shadow-sm" alt="" />}
                                     <div className={item.checked ? "line-through text-gray-400 text-sm" : "text-sm text-gray-800"}>
-                                        <p className="font-medium">{item.text}</p>
-                                        <p className="text-xs text-gray-500">
-                                            {item.date && <span className="mr-2 text-gray-400"><i className="fa-regular fa-calendar"></i> {item.date}</span>}
-                                            {currency.symbol}{item.cost} × {item.qty}件 → 約 NT$ {getTwdEquivalent(item.cost * item.qty, currency.code, exchangeRate)}
-                                        </p>
-                                        {item.notes && <p className="text-xs text-blue-600 mt-1 italic">📄 {item.notes}</p>}
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-bold">{item.text}</p>
+                                            {item.date && <span className="text-[9px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded font-bold"><i className="fa-regular fa-calendar mr-1"></i>{item.date}</span>}
+                                        </div>
+                                        <p className="text-xs text-gray-500">{currency.symbol}{item.cost} × {item.qty}件 → 折合約 NT$ {getTwdEquivalent(item.cost * item.qty, currency.code, exchangeRate).toLocaleString()}</p>
+                                        {item.notes && <p className="text-[11px] text-blue-500 mt-1 italic font-medium">📄 {item.notes}</p>}
                                     </div>
                                 </div>
                                 <div className="flex gap-1">
-                                    <button onClick={() => handleEdit(item)} className="text-gray-300 hover:text-blue-500 transition-colors p-1"><i className="fa-solid fa-pen"></i></button>
-                                    <button onClick={() => deleteItem(item.id)} className="text-gray-300 hover:text-red-500 transition-colors p-1"><i className="fa-solid fa-trash-can"></i></button>
+                                    <button onClick={() => handleEdit(item)} className="text-gray-200 hover:text-blue-500 transition-colors p-1"><i className="fa-solid fa-pen text-xs"></i></button>
+                                    <button onClick={() => deleteItem(item.id)} className="text-gray-200 hover:text-red-500 transition-colors p-1"><i className="fa-solid fa-trash-can text-xs"></i></button>
                                 </div>
                             </div>
                         ))}
-                        {shoppingList.length === 0 && <p className="text-center text-gray-500 py-10 text-xs">購物車內尚無品項。</p>}
+                        {shoppingList.length === 0 && <p className="text-center text-gray-300 py-12 text-xs italic">購物車內尚無品項。</p>}
                     </div>
                 </div>
             );
@@ -982,12 +982,10 @@
             );
         };
 
-        // --- 航班訊息元件 (已替換為0625航班信息版本) ---
+        // ==========================================
+        // 新增：航班資訊元件 (0625版本)
+        // ==========================================
         const RenderFlightInfo = ({ flightInfo, setFlightInfo, showToast }) => {
-            const [isEditing, setIsEditing] = useState(false);
-            const [editTab, setEditTab] = useState('outbound');
-            const [formData, setFormData] = useState(JSON.parse(JSON.stringify(flightInfo)));
-
             const GLOBAL_AIRPORTS = [
                 "TPE - 台北/桃園", "TSA - 台北/松山", "KHH - 高雄/小港", "RMQ - 台中/清泉崗",
                 "NRT - 東京/成田", "HND - 東京/羽田", "KIX - 大阪/關西", "FUK - 福岡", "CTS - 札幌/新千歲", "OKA - 沖繩/那霸",
@@ -1002,68 +1000,54 @@
             ];
 
             const AIRLINE_DB = {
-                '大韓航空': { code: 'KE', bg: '0064B0' },
-                '韓亞航空': { code: 'OZ', bg: '4A4843' },
-                '濟州航空': { code: '7C', bg: 'FF5000' },
-                '德威航空': { code: 'TW', bg: 'D22C2A' },
-                '真航空': { code: 'LJ', bg: '009000' },
-                '首爾航空': { code: 'RS', bg: '00B0B9' },
-                '釜山航空': { code: 'BX', bg: '003B7E' },
-                '中華航空': { code: 'CI', bg: '0D8ABC' },
-                '長榮航空': { code: 'BR', bg: '00A3A1' },
-                '星宇航空': { code: 'JX', bg: 'D4A373' },
-                '國泰航空': { code: 'CX', bg: '006564' },
-                '日本航空': { code: 'JL', bg: 'E3000F' },
-                '全日空': { code: 'NH', bg: '0033A0' },
-                '阿聯酋航空': { code: 'EK', bg: 'D71A21' },
-                '聯合航空': { code: 'UA', bg: '005DAA' },
-                '達美航空': { code: 'DL', bg: 'E3132C' },
+                '大韓航空': { code: 'KE', bg: '0064B0' }, '韓亞航空': { code: 'OZ', bg: '4A4843' },
+                '濟州航空': { code: '7C', bg: 'FF5000' }, '德威航空': { code: 'TW', bg: 'D22C2A' },
+                '真航空': { code: 'LJ', bg: '009000' }, '首爾航空': { code: 'RS', bg: '00B0B9' },
+                '釜山航空': { code: 'BX', bg: '003B7E' }, '中華航空': { code: 'CI', bg: '0D8ABC' },
+                '長榮航空': { code: 'BR', bg: '00A3A1' }, '星宇航空': { code: 'JX', bg: 'D4A373' },
+                '國泰航空': { code: 'CX', bg: '006564' }, '日本航空': { code: 'JL', bg: 'E3000F' },
+                '全日空': { code: 'NH', bg: '0033A0' }, '阿聯酋航空': { code: 'EK', bg: 'D71A21' },
+                '聯合航空': { code: 'UA', bg: '005DAA' }, '達美航空': { code: 'DL', bg: 'E3132C' },
                 '其他': { code: '✈️', bg: 'cbd5e1' }
             };
 
+            const [isEditing, setIsEditing] = useState(false);
+            const [editTab, setEditTab] = useState('outbound');
+            const [formData, setFormData] = useState(flightInfo);
+
             const formatTime = (isoStr) => {
                 if (!isoStr) return '';
-                const parts = isoStr.split('T');
-                if (parts.length === 2) {
-                    const dateParts = parts[0].split('-');
-                    const timeParts = parts[1].split(':');
-                    if (dateParts.length >= 3 && timeParts.length >= 2) {
-                        return `${dateParts[1]}/${dateParts[2]} ${timeParts[0]}:${timeParts[1]}`;
-                    }
-                }
-                return isoStr;
+                const d = new Date(isoStr);
+                if (isNaN(d.getTime())) return isoStr; // 防呆
+                return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
             };
 
             const handleSave = (e) => {
                 e.preventDefault();
-                const newOutbound = { ...formData.outbound, flightNumber: formData.outbound.flightNumber.toUpperCase() };
-                const newReturn = { ...formData.return, flightNumber: formData.return.flightNumber.toUpperCase() };
-                setFlightInfo({ outbound: newOutbound, return: newReturn });
-                setIsEditing(false);
-                showToast("航班資訊已更新！");
-            };
-
-            const clearField = (fieldId) => {
-                setFormData({
-                    ...formData,
-                    [editTab]: { ...formData[editTab], [fieldId]: '' }
+                setFlightInfo({
+                    outbound: { ...formData.outbound, flightNumber: (formData.outbound.flightNumber || '').toUpperCase() },
+                    return: { ...formData.return, flightNumber: (formData.return.flightNumber || '').toUpperCase() }
                 });
+                setIsEditing(false);
+                if (showToast) showToast("航班資訊已更新！");
             };
 
-            const renderDisplayCard = (type, label, icon) => {
-                const d = flightInfo[type];
-                const cleanDepCode = d.departureCode ? d.departureCode.substring(0, 3).toUpperCase() : '---';
-                const cleanArrCode = d.arrivalCode ? d.arrivalCode.substring(0, 3).toUpperCase() : '---';
+            const renderDisplayCard = (type) => {
+                const d = flightInfo[type] || {};
+                const isOutbound = type === 'outbound';
+                const cleanDepCode = (d.departureCode || '---').substring(0, 3).toUpperCase();
+                const cleanArrCode = (d.arrivalCode || '---').substring(0, 3).toUpperCase();
                 const airData = AIRLINE_DB[d.airline] || AIRLINE_DB['其他'];
-                const logoSrc = `https://ui-avatars.com/api/?name=${airData.code}&background=${airData.bg}&color=fff&rounded=true&bold=true`;
+                const logoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(airData.code)}&background=${airData.bg}&color=fff&rounded=true&bold=true`;
 
                 return (
-                    <div className="bg-white rounded-xl shadow-sm border border-[#C4D8E5] overflow-hidden w-full">
+                    <div className="bg-white rounded-xl shadow-sm border border-[#C4D8E5] overflow-hidden">
                         <div className="bg-[#8EB1D1] px-3 py-1.5 flex justify-between items-center text-white">
                             <div className="font-black tracking-widest text-[10px] flex items-center gap-1.5">
-                                <i className={`fa-solid ${icon} w-3.5 h-3.5`}></i> {label}
+                                <i className={`fa-solid ${isOutbound ? 'fa-plane-departure' : 'fa-plane-arrival'} w-3.5 h-3.5`}></i> 
+                                {isOutbound ? '去程 OUTBOUND' : '回程 INBOUND'}
                             </div>
-                            <button type="button" onClick={() => { setFormData(JSON.parse(JSON.stringify(flightInfo))); setEditTab(type); setIsEditing(true); }} className="px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 shadow-sm bg-white/20 backdrop-blur-sm hover:bg-white/40 transition-colors">
+                            <button type="button" onClick={() => { setFormData(flightInfo); setEditTab(type); setIsEditing(true); }} className="px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 shadow-sm bg-white/20 backdrop-blur-sm hover:bg-white/40 transition-colors">
                                 <i className="fa-solid fa-pen w-2.5 h-2.5"></i> 編輯
                             </button>
                         </div>
@@ -1072,16 +1056,16 @@
                             <div className="text-center w-[28%] flex flex-col items-center">
                                 <div className="text-3xl font-black leading-none tracking-tighter">{cleanDepCode}</div>
                                 <div className="text-[10px] font-bold text-slate-500 mt-1.5">{formatTime(d.departureTime)}</div>
-                                <div className="text-[9px] bg-[#C4D8E5]/30 text-[#8EB1D1] font-bold px-1.5 py-0.5 rounded mt-1 inline-block">航廈 <span>{d.departureTerminal ? d.departureTerminal.replace(/航廈|T/gi, '') : '-'}</span></div>
+                                <div className="text-[9px] bg-[#C4D8E5]/30 text-[#8EB1D1] font-bold px-1.5 py-0.5 rounded mt-1 inline-block">航廈 <span>{(d.departureTerminal || '-').replace(/航廈|T/gi, '')}</span></div>
                             </div>
                             
                             <div className="flex-1 flex flex-col items-center px-1 relative top-[-2px]">
                                 <div className="text-[10px] font-black tracking-widest text-slate-700 bg-white px-1 z-10">{d.flightNumber || '----'}</div>
                                 <div className="w-full border-t-[1.5px] border-dashed border-[#C4D8E5] my-2 relative">
-                                    <i className={`fa-solid fa-plane text-[#8EB1D1] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-0.5 ${type === 'outbound' ? 'rotate-45' : 'rotate-[225deg]'}`}></i> 
+                                    <i className={`fa-solid fa-plane text-[#8EB1D1] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 ${isOutbound ? 'rotate-45' : '-rotate-45'} bg-white px-0.5`}></i>
                                 </div>
                                 <div className="flex items-center gap-1 bg-white px-1 rounded">
-                                    <img src={logoSrc} className="w-3.5 h-3.5 rounded-full shadow-sm object-cover" alt="logo" />
+                                    <img src={logoUrl} className="w-3.5 h-3.5 rounded-full shadow-sm object-cover" alt="airline" />
                                     <span className="text-[9px] font-bold text-slate-500 whitespace-nowrap">{d.airline || '未選擇'}</span>
                                 </div>
                             </div>
@@ -1089,7 +1073,7 @@
                             <div className="text-center w-[28%] flex flex-col items-center">
                                 <div className="text-3xl font-black leading-none tracking-tighter">{cleanArrCode}</div>
                                 <div className="text-[10px] font-bold text-slate-500 mt-1.5">{formatTime(d.arrivalTime)}</div>
-                                <div className="text-[9px] bg-[#C4D8E5]/30 text-[#8EB1D1] font-bold px-1.5 py-0.5 rounded mt-1 inline-block">航廈 <span>{d.arrivalTerminal ? d.arrivalTerminal.replace(/航廈|T/gi, '') : '-'}</span></div>
+                                <div className="text-[9px] bg-[#C4D8E5]/30 text-[#8EB1D1] font-bold px-1.5 py-0.5 rounded mt-1 inline-block">航廈 <span>{(d.arrivalTerminal || '-').replace(/航廈|T/gi, '')}</span></div>
                             </div>
                         </div>
                     </div>
@@ -1097,17 +1081,17 @@
             };
 
             return (
-                <div className="p-4 pb-24 no-scrollbar flex flex-col items-center w-full">
+                <div className="p-4 pb-24 flex flex-col items-center w-full">
                     <div className="w-full max-w-[380px] relative">
                         {!isEditing ? (
                             <div className="flex flex-col gap-3 animate-slide w-full">
-                                {renderDisplayCard('outbound', '去程 OUTBOUND', 'fa-plane-departure')}
-                                {renderDisplayCard('return', '回程 INBOUND', 'fa-plane-arrival')}
+                                {renderDisplayCard('outbound')}
+                                {renderDisplayCard('return')}
                             </div>
                         ) : (
                             <div className="bg-white rounded-xl shadow-md p-4 border-t-4 border-[#8EB1D1] animate-slide mt-2 w-full">
                                 <h2 className="text-sm font-bold flex items-center gap-1.5 text-slate-700 mb-3">
-                                    <i className="fa-solid fa-gear text-[#8EB1D1]"></i> 編輯行程細節
+                                    <i className="fa-solid fa-gear w-4 h-4 text-[#8EB1D1]"></i> 編輯行程細節
                                 </h2>
 
                                 <div className="flex bg-[#E8ECEF] p-1 rounded-lg mb-4">
@@ -1123,13 +1107,13 @@
                                     <div className="flex gap-2">
                                         <div className="flex-1">
                                             <label className="text-[10px] font-bold text-slate-400">航班號碼</label>
-                                            <input type="text" className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold uppercase outline-none focus:ring-1 focus:ring-[#8EB1D1]" value={formData[editTab].flightNumber || ''} onChange={e => setFormData({...formData, [editTab]: {...formData[editTab], flightNumber: e.target.value}})} />
+                                            <input type="text" className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold uppercase outline-none focus:ring-1 focus:ring-[#8EB1D1]" value={formData[editTab]?.flightNumber || ''} onChange={(e) => setFormData({...formData, [editTab]: {...formData[editTab], flightNumber: e.target.value}})} />
                                         </div>
                                         <div className="flex-[1.5]">
                                             <label className="text-[10px] font-bold text-slate-400">航空公司</label>
-                                            <select className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1]" value={formData[editTab].airline || ''} onChange={e => setFormData({...formData, [editTab]: {...formData[editTab], airline: e.target.value}})}>
-                                                <option value="">未選擇</option>
-                                                {Object.keys(AIRLINE_DB).map(al => <option key={al} value={al}>{al}</option>)}
+                                            <select className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1]" value={formData[editTab]?.airline || ''} onChange={(e) => setFormData({...formData, [editTab]: {...formData[editTab], airline: e.target.value}})}>
+                                                <option value="">請選擇</option>
+                                                {Object.keys(AIRLINE_DB).map(name => <option key={name} value={name}>{name}</option>)}
                                             </select>
                                         </div>
                                     </div>
@@ -1138,15 +1122,15 @@
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-400">出發地</label>
                                             <div className="relative">
-                                                <input type="text" list="airports-db" className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1] pr-7" placeholder="例如: TPE" value={formData[editTab].departureCode || ''} onChange={e => setFormData({...formData, [editTab]: {...formData[editTab], departureCode: e.target.value}})} />
-                                                <i className="fa-solid fa-circle-xmark clear-btn absolute right-1.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 hover:text-red-500 cursor-pointer" onClick={() => clearField('departureCode')}></i>
+                                                <input type="text" list="airports-db" className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1] pr-7" placeholder="例如: TPE" value={formData[editTab]?.departureCode || ''} onChange={(e) => setFormData({...formData, [editTab]: {...formData[editTab], departureCode: e.target.value}})} />
+                                                <i className="fa-solid fa-circle-xmark clear-btn absolute right-1.5 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center text-slate-400 hover:text-red-500 cursor-pointer" onClick={() => setFormData({...formData, [editTab]: {...formData[editTab], departureCode: ''}})}></i>
                                             </div>
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-400">目的地</label>
                                             <div className="relative">
-                                                <input type="text" list="airports-db" className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1] pr-7" placeholder="例如: NRT" value={formData[editTab].arrivalCode || ''} onChange={e => setFormData({...formData, [editTab]: {...formData[editTab], arrivalCode: e.target.value}})} />
-                                                <i className="fa-solid fa-circle-xmark clear-btn absolute right-1.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 hover:text-red-500 cursor-pointer" onClick={() => clearField('arrivalCode')}></i>
+                                                <input type="text" list="airports-db" className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1] pr-7" placeholder="例如: NRT" value={formData[editTab]?.arrivalCode || ''} onChange={(e) => setFormData({...formData, [editTab]: {...formData[editTab], arrivalCode: e.target.value}})} />
+                                                <i className="fa-solid fa-circle-xmark clear-btn absolute right-1.5 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center text-slate-400 hover:text-red-500 cursor-pointer" onClick={() => setFormData({...formData, [editTab]: {...formData[editTab], arrivalCode: ''}})}></i>
                                             </div>
                                         </div>
                                     </div>
@@ -1154,22 +1138,22 @@
                                     <div className="grid grid-cols-2 gap-6 pt-1">
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-400 block mb-1">出發時間</label>
-                                            <input type="datetime-local" className="w-full bg-[#E8ECEF] rounded p-2 text-[10px] font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1]" value={formData[editTab].departureTime || ''} onChange={e => setFormData({...formData, [editTab]: {...formData[editTab], departureTime: e.target.value}})} />
+                                            <input type="datetime-local" className="w-full bg-[#E8ECEF] rounded p-2 text-[10px] font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1]" value={formData[editTab]?.departureTime || ''} onChange={(e) => setFormData({...formData, [editTab]: {...formData[editTab], departureTime: e.target.value}})} />
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-400 block mb-1">到達時間</label>
-                                            <input type="datetime-local" className="w-full bg-[#E8ECEF] rounded p-2 text-[10px] font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1]" value={formData[editTab].arrivalTime || ''} onChange={e => setFormData({...formData, [editTab]: {...formData[editTab], arrivalTime: e.target.value}})} />
+                                            <input type="datetime-local" className="w-full bg-[#E8ECEF] rounded p-2 text-[10px] font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1]" value={formData[editTab]?.arrivalTime || ''} onChange={(e) => setFormData({...formData, [editTab]: {...formData[editTab], arrivalTime: e.target.value}})} />
                                         </div>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-400 block mb-1">起飛航廈</label>
-                                            <input type="text" className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold uppercase outline-none focus:ring-1 focus:ring-[#8EB1D1]" value={formData[editTab].departureTerminal || ''} onChange={e => setFormData({...formData, [editTab]: {...formData[editTab], departureTerminal: e.target.value}})} />
+                                            <input type="text" className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold uppercase outline-none focus:ring-1 focus:ring-[#8EB1D1]" value={formData[editTab]?.departureTerminal || ''} onChange={(e) => setFormData({...formData, [editTab]: {...formData[editTab], departureTerminal: e.target.value}})} />
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-400 block mb-1">降落航廈</label>
-                                            <input type="text" className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold uppercase outline-none focus:ring-1 focus:ring-[#8EB1D1]" value={formData[editTab].arrivalTerminal || ''} onChange={e => setFormData({...formData, [editTab]: {...formData[editTab], arrivalTerminal: e.target.value}})} />
+                                            <input type="text" className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold uppercase outline-none focus:ring-1 focus:ring-[#8EB1D1]" value={formData[editTab]?.arrivalTerminal || ''} onChange={(e) => setFormData({...formData, [editTab]: {...formData[editTab], arrivalTerminal: e.target.value}})} />
                                         </div>
                                     </div>
 
@@ -1182,6 +1166,125 @@
                                 </form>
                             </div>
                         )}
+                    </div>
+                </div>
+            );
+        };
+
+        // ==========================================
+        // 新增：行前準備清單元件 (260625版本)
+        // ==========================================
+        const RenderChecklist = ({ prepList, setPrepList }) => {
+            const categories = ['重要證件', '財務', '電子產品', '生活衣物', '其他'];
+            const [isExpanded, setIsExpanded] = useState(true); // 預設展開讓使用者直接看到
+            const [currentCategory, setCurrentCategory] = useState('重要證件');
+            const [newItemText, setNewItemText] = useState('');
+
+            const total = prepList.length;
+            const completed = prepList.filter(item => item.checked).length;
+            const percentage = total === 0 ? 0 : Math.round((completed / total) * 100);
+
+            const toggleItemCheck = (id) => {
+                setPrepList(prepList.map(item => item.id === id ? { ...item, checked: !item.checked } : item));
+            };
+
+            const deleteItem = (id) => {
+                setPrepList(prepList.filter(item => item.id !== id));
+            };
+
+            const handleAdd = (e) => {
+                e.preventDefault();
+                if (!newItemText.trim()) return;
+                setPrepList([...prepList, { id: Date.now(), text: newItemText.trim(), checked: false, category: currentCategory }]);
+                setNewItemText('');
+            };
+
+            const groupedItems = categories.reduce((acc, cat) => {
+                const catItems = prepList.filter(item => item.category === cat);
+                if (catItems.length > 0) acc[cat] = catItems;
+                return acc;
+            }, {});
+
+            return (
+                <div className="p-4 pb-24 flex flex-col items-center w-full">
+                    <div className="w-full max-w-md shadow-2xl rounded-3xl overflow-hidden transition-all duration-500 ease-in-out border border-gray-200" style={{ backgroundColor: '#E8ECEF' }}>
+                        
+                        <div className="p-5 cursor-pointer select-none relative" onClick={(e) => { if(!e.target.closest('button') && !e.target.closest('input')) setIsExpanded(!isExpanded); }}>
+                            <div className="flex justify-between items-center mb-3">
+                                <div className="flex items-center space-x-2">
+                                    <i className="ph ph-airplane-takeoff text-2xl" style={{ color: '#495B7D' }}></i>
+                                    <h1 className="text-xl font-bold tracking-wide" style={{ color: '#495B7D' }}>行前準備清單</h1>
+                                </div>
+                                <div className="p-1 rounded-full transition-colors" style={{ backgroundColor: isExpanded ? '#8BA3C5' : 'transparent' }}>
+                                    <i className={`ph ph-caret-down text-2xl transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} style={{ color: isExpanded ? '#E8ECEF' : '#495B7D' }}></i>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-between items-end mb-2">
+                                <span className="text-sm font-bold" style={{ color: '#495B7D' }}>準備進度</span>
+                                <span className="text-lg font-bold" style={{ color: '#495B7D' }}>{percentage}%</span>
+                            </div>
+
+                            <div className="w-full h-3 rounded-full overflow-hidden relative" style={{ backgroundColor: 'rgba(73, 91, 125, 0.2)' }}>
+                                <div className="h-full transition-all duration-700 ease-out absolute left-0 top-0" style={{ width: `${percentage}%`, backgroundColor: '#495B7D' }}></div>
+                            </div>
+
+                            <div className="mt-2 text-xs text-right font-medium" style={{ color: '#495B7D' }}>已完成 {completed} / {total} 項</div>
+                        </div>
+
+                        <div className={`transition-all duration-500 ease-in-out bg-white/50 backdrop-blur-sm overflow-hidden ${isExpanded ? 'max-h-[800px] opacity-100 overflow-y-auto' : 'max-h-0 opacity-0'}`} style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+                            <div className="p-5 border-t" style={{ borderColor: 'rgba(139, 163, 197, 0.3)' }}>
+                                
+                                <form onSubmit={handleAdd} className="mb-6 flex flex-col space-y-2">
+                                    <div className="flex space-x-2">
+                                        <input type="text" placeholder="輸入自訂物品..." className="flex-1 px-4 py-2 rounded-xl text-sm border-none focus:ring-2 outline-none shadow-sm" style={{ backgroundColor: '#E8ECEF', color: '#495B7D', '--tw-ring-color': '#495B7D' }} value={newItemText} onChange={(e) => setNewItemText(e.target.value)} />
+                                        <button type="submit" className="p-2 rounded-xl text-white shadow-sm hover:opacity-90 transition-opacity flex items-center justify-center w-10" style={{ backgroundColor: '#495B7D' }}>
+                                            <i className="ph ph-plus text-xl"></i>
+                                        </button>
+                                    </div>
+                                    <div className="flex space-x-2 overflow-x-auto pb-2" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+                                        {categories.map(cat => (
+                                            <button key={cat} type="button" onClick={() => setCurrentCategory(cat)} className={`whitespace-nowrap px-3 py-1 text-xs rounded-full transition-colors border ${currentCategory === cat ? 'border-transparent text-white' : 'border-[#495B7D] bg-transparent'}`} style={{ backgroundColor: currentCategory === cat ? '#495B7D' : 'transparent', color: currentCategory === cat ? '#E8ECEF' : '#495B7D' }}>
+                                                {cat}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </form>
+
+                                <div>
+                                    {Object.entries(groupedItems).map(([category, catItems]) => (
+                                        <div key={category} className="mb-5">
+                                            <h3 className="text-sm font-bold mb-3 border-b-2 pb-1 inline-block" style={{ color: '#495B7D', borderColor: '#8BA3C5' }}>{category}</h3>
+                                            <div className="space-y-2">
+                                                {catItems.map(item => (
+                                                    <div key={item.id} className={`flex items-center justify-between p-3 rounded-xl transition-all ${item.checked ? 'bg-[#E8ECEF]/60' : 'bg-white shadow-sm'}`}>
+                                                        <div className="flex items-center space-x-3 flex-1 cursor-pointer" onClick={() => toggleItemCheck(item.id)}>
+                                                            {item.checked ? (
+                                                                <i className="ph-fill ph-check-circle text-2xl" style={{ color: '#8BA3C5' }}></i>
+                                                            ) : (
+                                                                <i className="ph ph-circle text-2xl" style={{ color: '#495B7D', opacity: 0.6 }}></i>
+                                                            )}
+                                                            <span className={`text-sm transition-all duration-300 ${item.checked ? 'line-through opacity-50' : 'font-medium'}`} style={{ color: '#495B7D' }}>{item.text}</span>
+                                                        </div>
+                                                        <button onClick={() => deleteItem(item.id)} className="p-2 opacity-30 hover:opacity-100 transition-opacity" style={{ color: '#495B7D' }}>
+                                                            <i className="ph ph-trash text-lg"></i>
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {total === 0 && (
+                                    <div className="text-center py-8 text-sm font-medium" style={{ color: '#495B7D' }}>清單空空如也，趕快新增項目吧！</div>
+                                )}
+
+                                {total > 0 && percentage === 100 && (
+                                    <div className="text-center py-4 mt-4 rounded-xl font-bold text-sm animate-pulse" style={{ backgroundColor: '#495B7D', color: '#E8ECEF' }}>🎉 準備完畢！祝你旅途愉快！</div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
             );
@@ -1399,23 +1502,23 @@
             const [isDrawerOpen, setIsDrawerOpen] = useState(false);
             const showToast = (message) => { setToastMessage(message); setTimeout(() => setToastMessage(''), 2500); };
 
-            const [destinations, setDestinations] = useState(() => JSON.parse(localStorage.getItem('app_destinations_v8')) || INITIAL_DESTINATIONS);
-            const [currentTrip, setCurrentTrip] = useState(() => JSON.parse(localStorage.getItem('app_current_trip_v8')) || { country: '韓國', city: '首爾' });
-            const [currency, setCurrency] = useState(() => JSON.parse(localStorage.getItem('app_currency_v8')) || CURRENCIES[0]);
-            const [exchangeRate, setExchangeRate] = useState(() => Number(localStorage.getItem('app_exchange_rate_v8')) || CURRENCIES[0].defaultRate);
-            const [itinerary, setItinerary] = useState(() => JSON.parse(localStorage.getItem('app_itinerary_v8')) || []);
-            const [stores, setStores] = useState(() => JSON.parse(localStorage.getItem('app_stores_v8')) || INITIAL_STORES);
-            const [mustEats, setMustEats] = useState(() => JSON.parse(localStorage.getItem('app_must_eats_v8')) || []);
-            const [mustBuys, setMustBuys] = useState(() => JSON.parse(localStorage.getItem('app_must_buys_v8')) || []);
-            const [shoppingList, setShoppingList] = useState(() => JSON.parse(localStorage.getItem('app_shopping_list_v8')) || []);
-            const [splitMembers, setSplitMembers] = useState(() => JSON.parse(localStorage.getItem('app_split_members_v8')) || ['自己', '朋友A']);
-            const [splitExpenses, setSplitExpenses] = useState(() => JSON.parse(localStorage.getItem('app_split_expenses_v8')) || []);
-            const [prepList, setPrepList] = useState(() => JSON.parse(localStorage.getItem('app_prep_list_v8')) || DEFAULT_PREP_LIST);
+            // 📌 鑰匙已經改回 v6_per_cat_add_final_260625，你之前的舊資料會全數復活！
+            const [destinations, setDestinations] = useState(() => JSON.parse(localStorage.getItem('app_destinations_v6_per_cat_add_final_260625')) || INITIAL_DESTINATIONS);
+            const [currentTrip, setCurrentTrip] = useState(() => JSON.parse(localStorage.getItem('app_current_trip_v6_per_cat_add_final_260625')) || { country: '韓國', city: '首爾' });
+            const [currency, setCurrency] = useState(() => JSON.parse(localStorage.getItem('app_currency_v6_per_cat_add_final_260625')) || CURRENCIES[0]);
+            const [exchangeRate, setExchangeRate] = useState(() => Number(localStorage.getItem('app_exchange_rate_v6_per_cat_add_final_260625')) || CURRENCIES[0].defaultRate);
+            const [itinerary, setItinerary] = useState(() => JSON.parse(localStorage.getItem('app_itinerary_v6_per_cat_add_final_260625')) || []);
+            const [stores, setStores] = useState(() => JSON.parse(localStorage.getItem('app_stores_v6_per_cat_add_final_260625')) || INITIAL_STORES);
+            const [mustEats, setMustEats] = useState(() => JSON.parse(localStorage.getItem('app_must_eats_v6_per_cat_add_final_260625')) || []);
+            const [mustBuys, setMustBuys] = useState(() => JSON.parse(localStorage.getItem('app_must_buys_v6_per_cat_add_final_260625')) || []);
+            const [shoppingList, setShoppingList] = useState(() => JSON.parse(localStorage.getItem('app_shopping_list_v6_per_cat_add_final_260625')) || []);
+            const [splitMembers, setSplitMembers] = useState(() => JSON.parse(localStorage.getItem('app_split_members_v6_per_cat_add_final_260625')) || ['自己', '朋友A']);
+            const [splitExpenses, setSplitExpenses] = useState(() => JSON.parse(localStorage.getItem('app_split_expenses_v6_per_cat_add_final_260625')) || []);
+            const [prepList, setPrepList] = useState(() => JSON.parse(localStorage.getItem('app_prep_list_v6_per_cat_add_final_260625')) || DEFAULT_PREP_LIST);
             const [mustGoType, setMustGoType] = useState('eat');
-            const [foodTypes, setFoodTypes] = useState(() => JSON.parse(localStorage.getItem('app_food_types_v8')) || INITIAL_FOOD_TYPES);
-            const [itemTypes, setItemTypes] = useState(() => JSON.parse(localStorage.getItem('app_item_types_v8')) || INITIAL_ITEM_TYPES);
-            const EMPTY_FLIGHT = { flightNumber: '', airline: '', departureCode: '', arrivalCode: '', departureTime: '', arrivalTime: '', departureTerminal: '', arrivalTerminal: '' };
-            const [flightInfo, setFlightInfo] = useState(() => JSON.parse(localStorage.getItem('app_flight_info_v8')) || { 
+            const [foodTypes, setFoodTypes] = useState(() => JSON.parse(localStorage.getItem('app_food_types_v6_per_cat_add_final_260625')) || INITIAL_FOOD_TYPES);
+            const [itemTypes, setItemTypes] = useState(() => JSON.parse(localStorage.getItem('app_item_types_v6_per_cat_add_final_260625')) || INITIAL_ITEM_TYPES);
+            const [flightInfo, setFlightInfo] = useState(() => JSON.parse(localStorage.getItem('app_flight_info_v6_per_cat_add_final_260625')) || { 
                 outbound: { flightNumber: 'KE 186', airline: '大韓航空', departureCode: 'TPE', arrivalCode: 'ICN', departureTime: '2026-06-25T08:30', arrivalTime: '2026-06-25T12:00', departureTerminal: '1', arrivalTerminal: '2' },
                 return: { flightNumber: 'KE 185', airline: '大韓航空', departureCode: 'ICN', arrivalCode: 'TPE', departureTime: '2026-06-30T14:30', arrivalTime: '2026-06-30T17:15', departureTerminal: '2', arrivalTerminal: '1' }
             });
@@ -1450,21 +1553,21 @@
 
             useEffect(() => {
                 const data = {
-                    app_destinations_v8: destinations,
-                    app_current_trip_v8: currentTrip,
-                    app_currency_v8: currency,
-                    app_exchange_rate_v8: String(exchangeRate),
-                    app_itinerary_v8: itinerary,
-                    app_stores_v8: stores,
-                    app_must_eats_v8: mustEats,
-                    app_must_buys_v8: mustBuys,
-                    app_shopping_list_v8: shoppingList,
-                    app_split_members_v8: splitMembers,
-                    app_split_expenses_v8: splitExpenses,
-                    app_prep_list_v8: prepList,
-                    app_food_types_v8: foodTypes,
-                    app_item_types_v8: itemTypes,
-                    app_flight_info_v8: flightInfo
+                    app_destinations_v6_per_cat_add_final_260625: destinations,
+                    app_current_trip_v6_per_cat_add_final_260625: currentTrip,
+                    app_currency_v6_per_cat_add_final_260625: currency,
+                    app_exchange_rate_v6_per_cat_add_final_260625: String(exchangeRate),
+                    app_itinerary_v6_per_cat_add_final_260625: itinerary,
+                    app_stores_v6_per_cat_add_final_260625: stores,
+                    app_must_eats_v6_per_cat_add_final_260625: mustEats,
+                    app_must_buys_v6_per_cat_add_final_260625: mustBuys,
+                    app_shopping_list_v6_per_cat_add_final_260625: shoppingList,
+                    app_split_members_v6_per_cat_add_final_260625: splitMembers,
+                    app_split_expenses_v6_per_cat_add_final_260625: splitExpenses,
+                    app_prep_list_v6_per_cat_add_final_260625: prepList,
+                    app_food_types_v6_per_cat_add_final_260625: foodTypes,
+                    app_item_types_v6_per_cat_add_final_260625: itemTypes,
+                    app_flight_info_v6_per_cat_add_final_260625: flightInfo
                 };
                 Object.entries(data).forEach(([key, val]) => localStorage.setItem(key, typeof val === 'string' ? val : JSON.stringify(val)));
             }, [destinations, currentTrip, currency, exchangeRate, itinerary, stores, foodTypes, itemTypes, mustEats, mustBuys, shoppingList, splitMembers, splitExpenses, prepList, flightInfo]);
@@ -1541,10 +1644,14 @@
             const handleResetData = () => {
                 if (!window.confirm('⚠️ 確定要清空所有設定與資料？⚠️')) return;
                 const keys = [
-                    'app_destinations_v8', 'app_current_trip_v8', 'app_currency_v8', 'app_exchange_rate_v8',
-                    'app_itinerary_v8', 'app_stores_v8', 'app_must_eats_v8', 'app_must_buys_v8',
-                    'app_shopping_list_v8', 'app_split_members_v8', 'app_split_expenses_v8', 'app_prep_list_v8',
-                    'app_food_types_v8', 'app_item_types_v8', 'app_flight_info_v8'
+                    'app_destinations_v6_per_cat_add_final_260625', 'app_current_trip_v6_per_cat_add_final_260625',
+                    'app_currency_v6_per_cat_add_final_260625', 'app_exchange_rate_v6_per_cat_add_final_260625',
+                    'app_itinerary_v6_per_cat_add_final_260625', 'app_stores_v6_per_cat_add_final_260625',
+                    'app_must_eats_v6_per_cat_add_final_260625', 'app_must_buys_v6_per_cat_add_final_260625',
+                    'app_shopping_list_v6_per_cat_add_final_260625', 'app_split_members_v6_per_cat_add_final_260625',
+                    'app_split_expenses_v6_per_cat_add_final_260625', 'app_prep_list_v6_per_cat_add_final_260625',
+                    'app_food_types_v6_per_cat_add_final_260625', 'app_item_types_v6_per_cat_add_final_260625',
+                    'app_flight_info_v6_per_cat_add_final_260625'
                 ];
                 keys.forEach(k => localStorage.removeItem(k));
                 setDestinations(INITIAL_DESTINATIONS);
@@ -1561,6 +1668,7 @@
                 setPrepList(DEFAULT_PREP_LIST);
                 setFoodTypes(INITIAL_FOOD_TYPES);
                 setItemTypes(INITIAL_ITEM_TYPES);
+                const EMPTY_FLIGHT = { flightNumber: '', airline: '', departureCode: '', arrivalCode: '', departureTime: '', arrivalTime: '', departureTerminal: '', arrivalTerminal: '' };
                 setFlightInfo({ outbound: { ...EMPTY_FLIGHT }, return: { ...EMPTY_FLIGHT } });
                 showToast('✅ 所有資料已清空，回復至初始設定！');
             };
@@ -1573,7 +1681,7 @@
                 { id: 'shop', label: '即時購物車', icon: 'fa-cart-shopping' },
                 { id: 'bill', label: '多人分帳記', icon: 'fa-comments-dollar' },
                 { id: 'tools', label: '小工具', icon: 'fa-toolbox' },
-                { id: 'prep', label: '行前檢查表', icon: 'fa-list-check' }
+                { id: 'prep', label: '行前準備清單', icon: 'fa-list-check' }
             ];
 
             return (
@@ -1630,12 +1738,12 @@
                         {activeTab === 'must' && <RenderMustGo currentTrip={currentTrip} currency={currency} stores={stores} setStores={setStores} mustEats={mustEats} setMustEats={setMustEats} mustBuys={mustBuys} setMustBuys={setMustBuys} shoppingList={shoppingList} setShoppingList={setShoppingList} foodTypes={foodTypes} setFoodTypes={setFoodTypes} itemTypes={itemTypes} setItemTypes={setItemTypes} showToast={showToast} mustGoType={mustGoType} setMustGoType={setMustGoType} setAddToItinModal={setAddToItinModal} />}
                         {activeTab === 'shop' && <RenderShoppingList shoppingList={shoppingList} setShoppingList={setShoppingList} currency={currency} exchangeRate={exchangeRate} showToast={showToast} handleCurrencyChange={handleCurrencyChange} />}
                         {activeTab === 'bill' && <RenderSplitBill splitMembers={splitMembers} setSplitMembers={setSplitMembers} splitExpenses={splitExpenses} setSplitExpenses={setSplitExpenses} currency={currency} exchangeRate={exchangeRate} showToast={showToast} />}
-                        {activeTab === 'prep' && <RenderPrepList prepList={prepList} setPrepList={setPrepList} showToast={showToast} />}
+                        {activeTab === 'prep' && <RenderChecklist prepList={prepList} setPrepList={setPrepList} />}
                         {activeTab === 'tools' && <RenderTools currency={currency} exchangeRate={exchangeRate} currentTrip={currentTrip} itinerary={itinerary} shoppingList={shoppingList} showToast={showToast} handleExportData={handleExportData} handleImportData={handleImportData} handleResetData={handleResetData} />}
                     </main>
 
                     {toastMessage && (
-                        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white font-medium text-xs px-4 py-2.5 rounded-xl shadow-xl z-50 backdrop-blur-sm border border-white/10 flex items-center gap-2 transition-all duration-300 animate-bounce">
+                        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white font-medium text-xs px-4 py-2.5 rounded-xl shadow-xl z-50 backdrop-blur-sm border border-white/10 flex items-center gap-2 transition-all duration-300 animate-bounce w-max max-w-[90%]">
                             <i className="fa-solid fa-circle-info text-sky-400"></i> {toastMessage}
                         </div>
                     )}
