@@ -637,25 +637,27 @@
             };
 
       // --- 介面渲染: 購物車試算 ---
+            
             const RenderShoppingList = () => {
                 const [itemText, setItemText] = useState('');
                 const [itemCost, setItemCost] = useState('');
                 const [itemQty, setItemQty] = useState('1');
                 const [itemImage, setItemImage] = useState(null);
                 const [itemNotes, setItemNotes] = useState('');
+                const [itemDate, setItemDate] = useState(new Date().toISOString().slice(0, 10)); // 新增日期狀態
                 const [editingId, setEditingId] = useState(null);
 
                 const handleAddItem = () => {
                     if (!itemText || !itemCost) return;
                     if (editingId) {
-                        setShoppingList(shoppingList.map(item => item.id === editingId ? { ...item, text: itemText, cost: Number(itemCost), qty: Number(itemQty), image: itemImage, notes: itemNotes } : item));
+                        setShoppingList(shoppingList.map(item => item.id === editingId ? { ...item, text: itemText, cost: Number(itemCost), qty: Number(itemQty), image: itemImage, notes: itemNotes, date: itemDate } : item));
                         setEditingId(null);
                         showToast("商品已更新！");
                     } else {
-                        setShoppingList([...shoppingList, { id: Date.now(), text: itemText, cost: Number(itemCost), qty: Number(itemQty), checked: false, image: itemImage, notes: itemNotes }]);
+                        setShoppingList([...shoppingList, { id: Date.now(), text: itemText, cost: Number(itemCost), qty: Number(itemQty), checked: false, image: itemImage, notes: itemNotes, date: itemDate }]);
                         showToast("商品已加入試算清單！");
                     }
-                    setItemText(''); setItemCost(''); setItemQty('1'); setItemImage(null); setItemNotes('');
+                    setItemText(''); setItemCost(''); setItemQty('1'); setItemImage(null); setItemNotes(''); setItemDate(new Date().toISOString().slice(0, 10));
                 };
 
                 const handleEdit = (item) => {
@@ -665,16 +667,13 @@
                     setItemQty(item.qty.toString());
                     setItemImage(item.image || null);
                     setItemNotes(item.notes || '');
+                    setItemDate(item.date || new Date().toISOString().slice(0, 10));
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 };
 
                 const cancelEdit = () => {
                     setEditingId(null);
-                    setItemText('');
-                    setItemCost('');
-                    setItemQty('1');
-                    setItemImage(null);
-                    setItemNotes('');
+                    setItemText(''); setItemCost(''); setItemQty('1'); setItemImage(null); setItemNotes(''); setItemDate(new Date().toISOString().slice(0, 10));
                 };
 
                 const handleImageUpload = (e) => {
@@ -713,6 +712,13 @@
                                     <input type="number" placeholder={`金額 (${currency.code})`} className="flex-1 p-2 border rounded-lg text-sm bg-white" value={itemCost} onChange={e => setItemCost(e.target.value)} />
                                     <input type="number" placeholder="數量" className="w-20 p-2 border rounded-lg text-sm bg-white" value={itemQty} onChange={e => setItemQty(e.target.value)} />
                                 </div>
+                                
+                                {/* 新增日期輸入框 */}
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-[10px] font-bold text-gray-400">購買日期</label>
+                                    <input type="date" className="w-full p-2 border rounded-lg text-sm bg-white" value={itemDate} onChange={e => setItemDate(e.target.value)} />
+                                </div>
+
                                 <textarea placeholder="備註 (選填)" className="w-full p-2 border rounded-lg text-sm bg-white resize-none" rows="2" value={itemNotes} onChange={e => setItemNotes(e.target.value)} />
                                 <div className="flex items-center gap-2">
                                     <label className="flex-1 flex items-center justify-center gap-2 p-2 border-2 border-dashed rounded-lg text-xs font-bold text-gray-400 cursor-pointer hover:bg-gray-50">
@@ -728,7 +734,7 @@
                                 </div>
                             </div>
                             <div className="flex gap-2">
-                                <button onClick={handleAddItem} className="flex-1 py-2 rounded-lg text-white font-bold text-sm" style={{ backgroundColor: COLORS.mediumBlue }}>
+                                <button onClick={handleAddItem} className="flex-1 py-2 rounded-lg text-white font-bold text-sm shadow-sm active:scale-95 transition-all" style={{ backgroundColor: COLORS.mediumBlue }}>
                                     {editingId ? '儲存修改' : '加入清單'}
                                 </button>
                                 {editingId && (
@@ -739,39 +745,40 @@
 
                         <div className="bg-white rounded-xl border shadow-sm divide-y mb-4">
                             {shoppingList.map(item => (
-                                <div key={item.id} className="p-3 flex items-center justify-between gap-2">
+                                <div key={item.id} className="p-3 flex items-center justify-between gap-2 hover:bg-gray-50/50 transition-colors">
                                     <div className="flex items-center gap-3 flex-1">
-                                        <input type="checkbox" checked={item.checked} onChange={() => toggleCheck(item.id)} className="w-4 h-4 rounded text-blue-600 focus:ring-0 border-gray-300" />
+                                        <input type="checkbox" checked={item.checked} onChange={() => toggleCheck(item.id)} className="w-4.5 h-4.5 rounded text-blue-600 focus:ring-0 border-gray-300" />
                                         {item.image && <img src={item.image} className="w-12 h-12 object-cover rounded-lg border shadow-sm" alt="" />}
                                         <div className={item.checked ? "line-through text-gray-400 text-sm" : "text-sm text-gray-800"}>
-                                            <p className="font-medium">{item.text}</p>
-                                            <p className="text-xs text-gray-500">{currency.symbol}{item.cost} × {item.qty}件 → 折合約 NT$ {getTwdEquivalent(item.cost * item.qty, currency.code, exchangeRate)}</p>
-                                            {item.notes && <p className="text-xs text-blue-600 mt-1 italic">📄 {item.notes}</p>}
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-bold">{item.text}</p>
+                                                {item.date && <span className="text-[9px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded font-bold"><i className="fa-regular fa-calendar mr-1"></i>{item.date}</span>}
+                                            </div>
+                                            <p className="text-xs text-gray-500">{currency.symbol}{item.cost} × {item.qty}件 → 折合約 NT$ {getTwdEquivalent(item.cost * item.qty, currency.code, exchangeRate).toLocaleString()}</p>
+                                            {item.notes && <p className="text-[11px] text-blue-500 mt-1 italic font-medium">📄 {item.notes}</p>}
                                         </div>
                                     </div>
                                     <div className="flex gap-1">
-                                        <button onClick={() => handleEdit(item)} className="text-gray-300 hover:text-blue-500 transition-colors p-1"><i className="fa-solid fa-pen"></i></button>
-                                        <button onClick={() => deleteItem(item.id)} className="text-gray-300 hover:text-red-500 transition-colors p-1"><i className="fa-solid fa-trash-can"></i></button>
+                                        <button onClick={() => handleEdit(item)} className="text-gray-200 hover:text-blue-500 transition-colors p-1"><i className="fa-solid fa-pen text-xs"></i></button>
+                                        <button onClick={() => deleteItem(item.id)} className="text-gray-200 hover:text-red-500 transition-colors p-1"><i className="fa-solid fa-trash-can text-xs"></i></button>
                                     </div>
                                 </div>
                             ))}
-                            {shoppingList.length === 0 && <p className="text-center text-gray-500 py-10 text-xs">購物車內尚無品項。</p>}
+                            {shoppingList.length === 0 && <p className="text-center text-gray-300 py-12 text-xs italic">購物車內尚無品項。</p>}
                         </div>
 
                         <div className="rounded-xl shadow-md mb-4 border overflow-hidden flex flex-col">
                             <div className="p-4 flex justify-between items-center text-white" style={{ backgroundColor: '#23354D' }}>
-                                <span className="text-xs font-bold text-white/80">預估總計 (NT$)</span>
+                                <span className="text-xs font-bold text-white/80">預計總計 (NT$)</span>
                                 <span className="text-2xl font-black text-white">NT$ {totals.twd?.toLocaleString() || 0}</span>
                             </div>
-                         
-                   
-                         
                         </div>
                     </div>
                 );
             };
 
-        // --- 介面渲染: 多人分帳記帳 ---
+
+            // --- 介面渲染: 多人分帳記帳 ---
             const RenderSplitBill = () => {
                 const [editingExpenseId, setEditingExpenseId] = useState(null);
                 const [newMember, setNewMember] = useState('');
