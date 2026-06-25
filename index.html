@@ -135,9 +135,9 @@
                 );
             }
             return (
-                <div className="flex flex-col gap-1 mb-3">
+                <div className="flex flex-col gap-1">
                     <label className="text-xs font-bold" style={{ color: COLORS.darkText }}>{label}</label>
-                    <select className="p-2 rounded-lg border bg-white text-sm" style={{ color: COLORS.darkText }} value={value} onChange={(e) => { if (e.target.value === '__ADD_NEW__') setIsAdding(true); else onChange(e.target.value); }}>
+                    <select className="w-full p-2 rounded-lg border bg-white text-sm" style={{ color: COLORS.darkText }} value={value} onChange={(e) => { if (e.target.value === '__ADD_NEW__') setIsAdding(true); else onChange(e.target.value); }}>
                         <option value="" disabled>{placeholder}</option>
                         {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                         <option value="__ADD_NEW__" style={{ color: COLORS.mediumBlue, fontWeight: 'bold' }}>+ 手動輸入新選項</option>
@@ -675,11 +675,11 @@
                             <div className="p-4 mb-5 rounded-lg bg-white border shadow-sm">
                                 <h3 className="font-bold text-xs mb-3">新增必買項目</h3>
                                 <input type="text" placeholder="商品名稱/備註 (必填)" className="w-full p-2 border rounded-lg text-sm mb-3 outline-none" value={buyForm.notes} onChange={e => setBuyForm({...buyForm, notes: e.target.value})} />
-                                <div className="grid grid-cols-2 gap-2 mb-3">
+                                <div className="grid grid-cols-2 gap-3 mb-4">
                                     <CreatableSelect label="購買店家" options={stores[currentTrip.country] || []} value={buyForm.store} onChange={v => setBuyForm({...buyForm, store: v})} onAddOption={n => setStores({...stores, [currentTrip.country]: [...(stores[currentTrip.country]||[]), n]})} placeholder="選擇商店" />
                                     <CreatableSelect label="品項分類" options={itemTypes} value={buyForm.type} onChange={v => setBuyForm({...buyForm, type: v})} onAddOption={n => setItemTypes([...itemTypes, n])} placeholder="選擇分類" />
                                 </div>
-                                <div className="grid grid-cols-2 gap-2 mb-3">
+                                <div className="grid grid-cols-2 gap-3 mb-4">
                                     <div className="flex flex-col gap-1">
                                         <label className="text-xs font-bold" style={{color: COLORS.darkText}}>預估費用</label>
                                         <div className="flex gap-2 w-full">
