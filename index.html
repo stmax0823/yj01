@@ -572,6 +572,7 @@
             };
 
             // --- 介面渲染: 口袋必去買 ---
+            
             const RenderMustGo = () => {
                 const [showForm, setShowForm] = useState(false);
                 const [editingMustGoId, setEditingMustGoId] = useState(null);
@@ -580,6 +581,16 @@
 
                 const handleAddEat = () => { if (!eatForm.name) return; if (editingMustGoId) setMustEats(mustEats.map(e => e.id === editingMustGoId ? { ...eatForm, id: e.id } : e)); else setMustEats([...mustEats, { ...eatForm, id: Date.now() }]); setEditingMustGoId(null); setShowForm(false); setEatForm({ url: '', name: '', country: currentTrip.country, city: currentTrip.city, district: '', type: '', cost: '', currency: currency.code, image: '' }); };
                 const handleAddBuy = () => { if (!buyForm.notes) return; if (editingMustGoId) setMustBuys(mustBuys.map(b => b.id === editingMustGoId ? { ...buyForm, id: b.id } : b)); else setMustBuys([...mustBuys, { ...buyForm, id: Date.now() }]); setEditingMustGoId(null); setShowForm(false); setBuyForm({ url: '', country: currentTrip.country, store: '', type: '', cost: '', notes: '', currency: currency.code, image: '' }); };
+
+                const handleImageUpload = (e, isEat) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        compressImage(file, (base64) => {
+                            if (isEat) setEatForm({ ...eatForm, image: base64 });
+                            else setBuyForm({ ...buyForm, image: base64 });
+                        });
+                    }
+                };
 
                 return (
                     <div className="p-4 pb-24">
@@ -590,10 +601,11 @@
                             </div>
                             <button onClick={() => setShowForm(!showForm)} className="px-3 py-1.5 rounded-lg text-sm font-bold text-white shadow-sm" style={{ backgroundColor: COLORS.mediumBlue }}>{showForm ? '取消' : '+ 新增'}</button>
                         </div>
+                        
                         {showForm && mustGoType === 'eat' && (
-                            <div className="p-4 mb-5 rounded-lg bg-white border shadow-sm">
-                                <input type="text" placeholder="店名 (必填)" className="w-full p-2 border rounded-lg text-sm mb-3" value={eatForm.name} onChange={e => setEatForm({...eatForm, name: e.target.value})} />
-                                <div className="grid grid-cols-2 gap-3 mb-3">
+                            <div className="p-4 mb-5 rounded-lg bg-white border shadow-sm space-y-3">
+                                <input type="text" placeholder="店名 (必填)" className="w-full p-2 border rounded-lg text-sm" value={eatForm.name} onChange={e => setEatForm({...eatForm, name: e.target.value})} />
+                                <div className="grid grid-cols-2 gap-3">
                                     <CreatableSelect label="美食分類" options={foodTypes} value={eatForm.type} onChange={v => setEatForm({...eatForm, type: v})} onAddOption={n => setFoodTypes([...foodTypes, n])} />
                                     <div className="flex flex-col gap-1 min-w-0">
                                         <label className="text-xs font-bold truncate">預估費用</label>
@@ -603,17 +615,25 @@
                                         </div>
                                     </div>
                                 </div>
-                                <button onClick={handleAddEat} className="w-full py-2 rounded-lg text-white font-bold text-sm shadow-sm" style={{ backgroundColor: COLORS.mediumBlue }}>儲存美食</button>
+                                <div className="flex items-center gap-2">
+                                    <label className="flex-1 flex items-center justify-center gap-2 p-2 border-2 border-dashed rounded-lg text-xs font-bold text-gray-400 cursor-pointer hover:bg-gray-50">
+                                        <i className="fa-solid fa-camera"></i> {eatForm.image ? '更換照片' : '點此上傳美食照片'}
+                                        <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, true)} className="hidden" />
+                                    </label>
+                                    {eatForm.image && <img src={eatForm.image} className="w-10 h-10 object-cover rounded-lg border shadow-sm" alt="" />}
+                                </div>
+                                <button onClick={handleAddEat} className="w-full py-2.5 rounded-xl text-white font-bold text-sm shadow-sm active:scale-95 transition-all" style={{ backgroundColor: COLORS.mediumBlue }}>儲存美食</button>
                             </div>
                         )}
+                        
                         {showForm && mustGoType === 'buy' && (
-                            <div className="p-4 mb-5 rounded-lg bg-white border shadow-sm">
-                                <input type="text" placeholder="商品名稱 (必填)" className="w-full p-2 border rounded-lg text-sm mb-3" value={buyForm.notes} onChange={e => setBuyForm({...buyForm, notes: e.target.value})} />
-                                <div className="grid grid-cols-2 gap-3 mb-4">
+                            <div className="p-4 mb-5 rounded-lg bg-white border shadow-sm space-y-3">
+                                <input type="text" placeholder="商品名稱 (必填)" className="w-full p-2 border rounded-lg text-sm" value={buyForm.notes} onChange={e => setBuyForm({...buyForm, notes: e.target.value})} />
+                                <div className="grid grid-cols-2 gap-3">
                                     <CreatableSelect label="購買店家" options={stores[currentTrip.country] || []} value={buyForm.store} onChange={v => setBuyForm({...buyForm, store: v})} onAddOption={n => setStores({...stores, [currentTrip.country]: [...(stores[currentTrip.country]||[]), n]})} />
                                     <CreatableSelect label="品項分類" options={itemTypes} value={buyForm.type} onChange={v => setBuyForm({...buyForm, type: v})} onAddOption={n => setItemTypes([...itemTypes, n])} />
                                 </div>
-                                <div className="grid grid-cols-2 gap-3 mb-4">
+                                <div className="grid grid-cols-2 gap-3">
                                     <div className="flex flex-col gap-1 min-w-0">
                                         <label className="text-xs font-bold truncate">預估費用</label>
                                         <div className="flex gap-1.5">
@@ -623,20 +643,46 @@
                                     </div>
                                     <div className="flex flex-col gap-1 min-w-0"><label className="text-xs font-bold truncate">參考連結</label><input type="text" placeholder="網址" className="w-full p-2 border rounded-lg text-sm" value={buyForm.url} onChange={e => setBuyForm({...buyForm, url: e.target.value})} /></div>
                                 </div>
-                                <button onClick={handleAddBuy} className="w-full py-2 rounded-lg text-white font-bold text-sm shadow-sm" style={{ backgroundColor: COLORS.mediumBlue }}>儲存購物項目</button>
+                                <div className="flex items-center gap-2">
+                                    <label className="flex-1 flex items-center justify-center gap-2 p-2 border-2 border-dashed rounded-lg text-xs font-bold text-gray-400 cursor-pointer hover:bg-gray-50">
+                                        <i className="fa-solid fa-camera"></i> {buyForm.image ? '更換照片' : '點此上傳商品照片'}
+                                        <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, false)} className="hidden" />
+                                    </label>
+                                    {buyForm.image && <img src={buyForm.image} className="w-10 h-10 object-cover rounded-lg border shadow-sm" alt="" />}
+                                </div>
+                                <button onClick={handleAddBuy} className="w-full py-2.5 rounded-xl text-white font-bold text-sm shadow-sm active:scale-95 transition-all" style={{ backgroundColor: COLORS.mediumBlue }}>儲存購物項目</button>
                             </div>
                         )}
-                        <div className="space-y-3">{(mustGoType === 'eat' ? mustEats : mustBuys).map(item => (
-                            <div key={item.id} className="bg-white rounded-xl border shadow-sm flex h-24 overflow-hidden">
-                                <div className="w-24 bg-gray-100 flex items-center justify-center text-gray-400">{item.image ? <img src={item.image} className="w-full h-full object-cover" alt="" /> : <i className={`fa-solid ${mustGoType === 'eat' ? 'fa-utensils' : 'fa-bag-shopping'} text-xl`}></i>}</div>
-                                <div className="flex-1 p-3 flex flex-col justify-between min-w-0"><div><h4 className="font-bold text-sm truncate">{item.name || item.notes}</h4><p className="text-[10px] text-gray-400">{item.type} | {item.store || item.city}</p></div><div className="flex justify-end gap-2"><button onClick={() => { setEditingMustGoId(item.id); if(mustGoType==='eat') setEatForm({...item}); else setBuyForm({...item}); setShowForm(true); }} className="text-indigo-500 text-xs"><i className="fa-solid fa-pen"></i></button><button onClick={() => mustGoType === 'eat' ? setMustEats(mustEats.filter(x => x.id !== item.id)) : setMustBuys(mustBuys.filter(x => x.id !== item.id))} className="text-red-400 text-xs"><i className="fa-solid fa-trash"></i></button></div></div>
-                            </div>
-                        ))}</div>
+
+                        <div className="space-y-3">
+                            {(mustGoType === 'eat' ? mustEats : mustBuys).map(item => (
+                                <div key={item.id} className="bg-white rounded-xl border shadow-sm flex h-24 overflow-hidden hover:bg-gray-50 transition-colors">
+                                    <div className="w-24 bg-gray-100 flex items-center justify-center text-gray-300 overflow-hidden">
+                                        {item.image ? <img src={item.image} className="w-full h-full object-cover" alt="" /> : <i className={`fa-solid ${mustGoType === 'eat' ? 'fa-utensils' : 'fa-bag-shopping'} text-xl`}></i>}
+                                    </div>
+                                    <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
+                                        <div>
+                                            <h4 className="font-bold text-sm truncate text-slate-700">{item.name || item.notes}</h4>
+                                            <p className="text-[10px] text-gray-400 font-bold">{item.type} {item.store || item.city ? `| ${item.store || item.city}` : ''}</p>
+                                            {item.cost && <p className="text-[10px] text-blue-500 font-black mt-1">{item.currency} {Number(item.cost).toLocaleString()}</p>}
+                                        </div>
+                                        <div className="flex justify-end gap-3">
+                                            <button onClick={() => { setEditingMustGoId(item.id); if(mustGoType==='eat') setEatForm({...item}); else setBuyForm({...item}); setShowForm(true); }} className="text-gray-300 hover:text-blue-500 transition-colors"><i className="fa-solid fa-pen text-xs"></i></button>
+                                            <button onClick={() => mustGoType === 'eat' ? setMustEats(mustEats.filter(x => x.id !== item.id)) : setMustBuys(mustBuys.filter(x => x.id !== item.id))} className="text-gray-300 hover:text-red-400 transition-colors"><i className="fa-solid fa-trash text-xs"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            {(mustGoType === 'eat' ? mustEats : mustBuys).length === 0 && (
+                                <div className="text-center py-16 text-gray-300 text-xs italic">尚無資料，趕快新增吧！</div>
+                            )}
+                        </div>
                     </div>
                 );
             };
 
-      // --- 介面渲染: 購物車試算 ---
+
+            // --- 介面渲染: 購物車試算 ---
             
             const RenderShoppingList = () => {
                 const [itemText, setItemText] = useState('');
@@ -716,7 +762,7 @@
                                 {/* 新增日期輸入框 */}
                                 <div className="flex flex-col gap-1">
                                     <label className="text-[10px] font-bold text-gray-400">購買日期</label>
-                                    <input type="date" className="flex-1 p-2 border rounded-lg text-sm bg-white" value={itemDate} onChange={e => setItemDate(e.target.value)} />
+                                    <input type="date" className="w-full p-2 border rounded-lg text-sm bg-white" value={itemDate} onChange={e => setItemDate(e.target.value)} />
                                 </div>
 
                                 <textarea placeholder="備註 (選填)" className="w-full p-2 border rounded-lg text-sm bg-white resize-none" rows="2" value={itemNotes} onChange={e => setItemNotes(e.target.value)} />
