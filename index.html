@@ -15,7 +15,7 @@
 
     <style>
         body { margin: 0; padding: 0; background-color: #F0ECDD; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent;}
-        .app-container { max-w: 480px; margin: 0 auto; background-color: #F0ECDD; min-height: 100vh; position: relative; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; }
+        .app-container { max-width: 480px; margin: 0 auto; background-color: #F0ECDD; min-height: 100vh; position: relative; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; }
         .content-area { flex: 1; overflow-y: auto; padding-bottom: 20px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -72,6 +72,7 @@
         };
 
         const INITIAL_FOOD_TYPES = ['在地小吃', '人氣餐廳', '咖啡廳', '甜點', '酒吧'];
+        // 修正了 3C 不見的問題，將 3C 加入預設選項
         const INITIAL_ITEM_TYPES = ['化妝品', '保養品', '服飾', '零食', '伴手禮', '免稅精品', '3C'];
 
         const DEFAULT_PREP_LIST = [
@@ -147,7 +148,7 @@
             const [isDrawerOpen, setIsDrawerOpen] = useState(false);
             const showToast = (message) => { setToastMessage(message); setTimeout(() => setToastMessage(''), 2500); };
 
-            // 💾 狀態初始化 (藉由版本號升級，強制加載最新的中日韓擴充資料，不被舊緩存遮蔽)
+            // 💾 狀態初始化 (已改回 v6_expanded，你的舊資料全部都會回來)
             const [destinations, setDestinations] = useState(() => JSON.parse(localStorage.getItem('app_destinations_v6_expanded')) || INITIAL_DESTINATIONS);
             const [currentTrip, setCurrentTrip] = useState(() => JSON.parse(localStorage.getItem('app_current_trip_v6_expanded')) || { country: '韓國', city: '首爾' });
             const [currency, setCurrency] = useState(() => JSON.parse(localStorage.getItem('app_currency_v6_expanded')) || CURRENCIES[0]);
@@ -342,8 +343,6 @@
             // ==========================================
             // 各頁面渲染元件
             // ==========================================
-
-
 
             // --- 介面渲染: 目的地 ---
             const RenderDestination = () => (
@@ -1153,163 +1152,11 @@
                 );
             };
 
-                                                                                                            // --- 介面渲染: 航班訊息 (iPhone 風格自動查詢版) ---
+            // --- 介面渲染: 航班資訊 (純手動版) ---
             const RenderFlightInfo = () => {
-                const [searchCode, setSearchCode] = useState('');
                 const [searchType, setSearchType] = useState('outbound');
-                const [isSearching, setIsSearching] = useState(false);
-                const [searchError, setSearchError] = useState('');
-                const [apiKey, setApiKey] = useState(() => localStorage.getItem('aviationstack_key') || '881909728d4094fc97aa55167cf07c44');
-                const [showApiSetup, setShowApiSetup] = useState(false);
-                const [showManualInput, setShowManualInput] = useState(false);
-                const [isOcrLoading, setIsOcrLoading] = useState(false);
                 const [manualForm, setManualForm] = useState({ code: '', airline: '', departure: '', arrival: '', depTime: '', arrTime: '', depTerminal: '', arrTerminal: '', duration: '', baggage: '' });
 
-                // 儲存 API Key
-                const saveApiKey = (key) => {
-                    setApiKey(key);
-                    localStorage.setItem('aviationstack_key', key);
-                    setShowApiSetup(false);
-                    showToast('✅ API Key 已儲存');
-                };
-
-                // 解析航班編號 (強化防錯版)
-                const parseFlightCode = (code) => {
-                    if (!code || typeof code !== 'string') return null;
-                    const cleaned = code.trim().toUpperCase().replace(/\s/g, '');
-                    const match = cleaned.match(/^([A-Z]{2,3})(\d+)$/);
-                    if (!match) return null;
-                    return { iata: match[1], number: match[2], full: cleaned };
-                };
-
-                // 計算飛行時間
-                const calcDuration = (dep, arr) => {
-                    if (!dep || !arr) return '';
-                    try {
-                        const d = new Date(dep), a = new Date(arr);
-                        const diff = Math.abs(a - d) / 60000;
-                        const h = Math.floor(diff / 60), m = diff % 60;
-                        return `${h}小時${m > 0 ? m + '分' : ''}`;
-                    } catch { return ''; }
-                };
-
-                // 格式化時間顯示
-                const formatDateTime = (isoStr) => {
-                    if (!isoStr) return '';
-                    try {
-                        const d = new Date(isoStr);
-                        const date = `${d.getMonth()+1}/${d.getDate()}`;
-                        const time = d.toTimeString().slice(0,5);
-                        return `${date} ${time}`;
-                    } catch { return isoStr; }
-                };
-
-                // 主查詢函數
-                const handleSearch = async (overrideCode) => {
-                    const targetCode = overrideCode || searchCode;
-                    const parsed = parseFlightCode(targetCode);
-                    if (!parsed) {
-                        setSearchError('請輸入正確格式的航班編號，例如：BR123、CI001、JL802');
-                        return;
-                    }
-                    if (!apiKey) {
-                        setShowApiSetup(true);
-                        setSearchError('');
-                        return;
-                    }
-                    setIsSearching(true);
-                    setSearchError('');
-                    try {
-                        const apiUrl = `http://api.aviationstack.com/v1/flights?access_key=${apiKey}&flight_iata=${parsed.full}`;
-                        // 更換為更穩定的 corsproxy.io
-                        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(apiUrl)}`;
-                        // 加入 8 秒逾時機制，避免網頁沒反應
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 8000);
-                        
-                        const res = await fetch(proxyUrl, { signal: controller.signal });
-                        clearTimeout(timeoutId);
-                        
-                        if (!res.ok) throw new Error('網路請求失敗');
-                        const wrapper = await res.json();
-                        const data = JSON.parse(wrapper.contents);
-                        if (data.error) throw new Error(data.error.message || 'API 錯誤');
-                        if (!data.data || data.data.length === 0) throw new Error('找不到該航班的即時動態');
-
-                        const f = data.data[0];
-                        const dep = f.departure || {};
-                        const arr = f.arrival || {};
-                        const airline = f.airline || {};
-                        const aircraft = f.aircraft || {};
-                        const depScheduled = dep.scheduled || dep.estimated || dep.actual || '';
-                        const arrScheduled = arr.scheduled || arr.estimated || arr.actual || '';
-                        
-                        const newFlight = {
-                            code: parsed.full,
-                            airline: airline.name || '',
-                            departure: dep.iata || '',
-                            arrival: arr.iata || '',
-                            depAirport: dep.airport || '',
-                            arrAirport: arr.airport || '',
-                            depTerminal: dep.terminal || '',
-                            arrTerminal: arr.terminal || '',
-                            depGate: dep.gate || '',
-                            arrGate: arr.gate || '',
-                            depTime: formatDateTime(depScheduled),
-                            arrTime: formatDateTime(arrScheduled),
-                            depActual: dep.actual ? formatDateTime(dep.actual) : '',
-                            arrActual: arr.actual ? formatDateTime(arr.actual) : '',
-                            duration: calcDuration(depScheduled, arrScheduled),
-                            status: f.flight_status === 'active' ? '飛行中' : f.flight_status === 'landed' ? '已降落' : f.flight_status === 'cancelled' ? '取消' : f.flight_status === 'delayed' ? '延誤' : '準時',
-                            aircraft: aircraft.iata || aircraft.icao || '',
-                            baggage: arr.baggage || '',
-                            delay: dep.delay ? `延誤 ${dep.delay} 分鐘` : ''
-                        };
-                        setFlightInfo({ ...flightInfo, [searchType]: newFlight });
-                        setSearchCode('');
-                        showToast(`✅ 已即時同步 ${parsed.full} 最新動態！`);
-                    } catch (err) {
-                        const errorMsg = err.name === 'AbortError' ? '連線逾時，請稍後再試' : err.message;
-                        setSearchError(`即時查詢失敗：${errorMsg}。已自動為您開啟手動輸入。`);
-                        // 查詢失敗時，自動幫使用者填入編號並開啟手動模式
-                        setManualForm(prev => ({ ...prev, code: targetCode }));
-                        setShowManualInput(true);
-                    }
-                    setIsSearching(false);
-                };
-
-                // 刪除航班保護
-                const deleteFlight = (type) => {
-                    if (confirm('確定要清除此航班資訊嗎？')) {
-                        const empty = { code: '', airline: '', departure: '', arrival: '', depAirport: '', arrAirport: '', depTerminal: '', arrTerminal: '', depGate: '', arrGate: '', depTime: '', arrTime: '', depActual: '', arrActual: '', duration: '', status: '準時', aircraft: '', baggage: '', delay: '' };
-                        setFlightInfo({ ...flightInfo, [type]: empty });
-                        showToast('已清除航班資訊');
-                    }
-                };
-
-                // 機票 OCR 識別功能 (強化版：不再寫死，引導使用者貼上文字或使用 API)
-                const handleTicketUpload = (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    setIsOcrLoading(true);
-                    showToast('🔍 正在分析圖片內容...');
-                    
-                    // 由於純網頁無法直接進行 AI OCR，我們改為引導模式
-                    setTimeout(() => {
-                        setIsOcrLoading(false);
-                        const userCode = prompt("📷 已偵測到圖片，請輸入圖片中的「航班編號」(如 JX840)：");
-                        if (userCode) {
-                            setSearchCode(userCode.toUpperCase());
-                            showToast('已擷取編號，正在嘗試自動查詢資訊...');
-                            // 這裡會自動觸發查詢邏輯
-                            setTimeout(() => {
-                                handleSearch(userCode.toUpperCase());
-                            }, 500);
-                        }
-                    }, 1500);
-                };
-
-                // 儲存手動輸入
                 const saveManualFlight = () => {
                     if (!manualForm.code) { showToast('❌ 請輸入航班編號'); return; }
                     const newFlight = {
@@ -1331,22 +1178,19 @@
                         delay: ''
                     };
                     setFlightInfo({ ...flightInfo, [searchType]: newFlight });
-                    setShowManualInput(false);
-                    showToast('✅ 航班資訊已儲存');
+                    setManualForm({ code: '', airline: '', departure: '', arrival: '', depTime: '', arrTime: '', depTerminal: '', arrTerminal: '', duration: '', baggage: '' });
+                    showToast('✅ 航班資訊已手動儲存');
                 };
 
-                const openTracker = (code) => code && window.open(`https://www.flightradar24.com/search?query=${code}`, '_blank');
-                const openFlightAware = (code) => code && window.open(`https://www.flightaware.com/live/flight/${code}`, '_blank');
+                const deleteFlight = (type) => {
+                    if (window.confirm('確定要清除此航班資訊嗎？')) {
+                        const empty = { code: '', airline: '', departure: '', arrival: '', depAirport: '', arrAirport: '', depTerminal: '', arrTerminal: '', depGate: '', arrGate: '', depTime: '', arrTime: '', depActual: '', arrActual: '', duration: '', status: '準時', aircraft: '', baggage: '', delay: '' };
+                        setFlightInfo({ ...flightInfo, [type]: empty });
+                        showToast('已清除航班資訊');
+                    }
+                };
 
-                // iPhone 風格航班卡片
                 const FlightCard = ({ flight, type, label }) => {
-                    const isOnTime = flight.status === '準時' || flight.status === '飛行中';
-                    const isLanded = flight.status === '已降落';
-                    const isCancelled = flight.status === '取消';
-                    const isDelayed = flight.status === '延誤';
-                    const statusColor = isLanded ? 'text-blue-300' : isCancelled ? 'text-red-400' : isDelayed ? 'text-yellow-400' : 'text-green-400';
-                    const statusBg = isLanded ? 'bg-blue-500/20' : isCancelled ? 'bg-red-500/20' : isDelayed ? 'bg-yellow-500/20' : 'bg-green-500/20';
-
                     return (
                         <div style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)' }} className="rounded-3xl p-5 text-white shadow-2xl mb-4 relative overflow-hidden">
                             <div className="flex justify-between items-start mb-5 relative">
@@ -1355,52 +1199,28 @@
                                     <h2 className="text-4xl font-black tracking-wider">{flight.code}</h2>
                                     {flight.airline && <p className="text-xs text-white/60 mt-1">{flight.airline}</p>}
                                 </div>
-                                <div className={`px-3 py-1.5 rounded-full ${statusBg} border border-white/10`}>
-                                    <span className={`text-xs font-bold ${statusColor}`}>{flight.status}</span>
+                                <div className={`px-3 py-1.5 rounded-full bg-green-500/20 border border-white/10`}>
+                                    <span className={`text-xs font-bold text-green-400`}>{flight.status}</span>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3 mb-5">
                                 <div className="flex-1">
                                     <p className="text-4xl font-black tracking-widest">{flight.departure || '---'}</p>
-                                    <p className="text-xs text-white/60 mt-1 leading-relaxed">{flight.depAirport || ''}</p>
                                     {flight.depTerminal && <div className="mt-2"><span className="text-[10px] bg-white/15 px-2 py-0.5 rounded-full text-white/80">{/^[Tt]\d/.test(flight.depTerminal) ? flight.depTerminal.toUpperCase() : `T${flight.depTerminal}`}</span></div>}
                                     <p className="text-sm font-bold mt-2 text-white">{flight.depTime}</p>
                                 </div>
                                 <div className="flex flex-col items-center gap-1 flex-shrink-0">
                                     <div className="w-20 flex items-center gap-1"><div className="flex-1 h-px bg-white/30"></div><i className="fa-solid fa-plane text-white/70 text-sm"></i><div className="flex-1 h-px bg-white/30"></div></div>
-                                    {flight.duration && <p className="text-[10px] text-white/50">{flight.duration}</p>}
                                 </div>
                                 <div className="flex-1 text-right">
                                     <p className="text-4xl font-black tracking-widest">{flight.arrival || '---'}</p>
-                                    <p className="text-xs text-white/60 mt-1 leading-relaxed">{flight.arrAirport || ''}</p>
                                     {flight.arrTerminal && <div className="mt-2"><span className="text-[10px] bg-white/15 px-2 py-0.5 rounded-full text-white/80">{/^[Tt]\d/.test(flight.arrTerminal) ? flight.arrTerminal.toUpperCase() : `T${flight.arrTerminal}`}</span></div>}
                                     <p className="text-sm font-bold mt-2 text-white">{flight.arrTime}</p>
                                 </div>
                             </div>
                             <div className="border-t border-white/10 mb-4"></div>
-                            <div className="grid grid-cols-2 gap-3 mb-4">
-                                {flight.duration && <div className="bg-white/8 rounded-2xl p-3"><p className="text-[10px] text-white/50 mb-1"><i className="fa-solid fa-clock mr-1"></i>飛行時間</p><p className="text-sm font-bold">{flight.duration}</p></div>}
-                                {flight.baggage && <div className="bg-white/8 rounded-2xl p-3"><p className="text-[10px] text-white/50 mb-1"><i className="fa-solid fa-suitcase-rolling mr-1"></i>行李轉盤</p><p className="text-sm font-bold">{flight.baggage}</p></div>}
-                            </div>
-                            <div className="flex gap-2">
-                                <button onClick={() => openTracker(flight.code)} className="flex-1 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-[10px] font-bold transition-all">FR24 追蹤</button>
-                                <button onClick={() => openFlightAware(flight.code)} className="flex-1 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-[10px] font-bold transition-all">FlightAware</button>
-                                <button onClick={() => setShowManualInput(true)} className="flex-1 py-2.5 bg-blue-500/20 hover:bg-blue-500/30 rounded-xl text-[10px] font-bold text-blue-300 transition-all">更新資訊</button>
-                                <button onClick={() => deleteFlight(type)} className="py-2.5 px-3 rounded-xl bg-red-500/20 hover:bg-red-500/40 text-red-400 text-xs font-bold transition-all border border-red-500/20"><i className="fa-solid fa-trash"></i></button>
-                            </div>
-                        </div>
-                    );
-                };
-
-                const ApiSetupPanel = () => {
-                    const [tempKey, setTempKey] = useState(apiKey);
-                    return (
-                        <div className="bg-slate-900 rounded-2xl p-5 text-white mb-5 animate-in fade-in duration-300">
-                            <h3 className="text-sm font-bold mb-3 flex items-center gap-2"><i className="fa-solid fa-key text-yellow-400"></i> 設定 AviationStack API Key</h3>
-                            <input type="text" placeholder="貼上您的 API Access Key" className="w-full p-3 bg-white/10 border border-white/10 rounded-xl text-xs mb-3 outline-none focus:border-yellow-400" value={tempKey} onChange={e => setTempKey(e.target.value)} />
-                            <div className="flex gap-2">
-                                <button onClick={() => saveApiKey(tempKey)} className="flex-1 py-2 bg-yellow-500 text-slate-900 font-bold rounded-lg text-xs">儲存設定</button>
-                                <button onClick={() => setShowApiSetup(false)} className="px-4 py-2 bg-white/10 rounded-lg text-xs">取消</button>
+                            <div className="flex justify-end gap-2">
+                                <button onClick={() => deleteFlight(type)} className="py-2 px-4 rounded-xl bg-red-500/20 hover:bg-red-500/40 text-red-400 text-xs font-bold transition-all border border-red-500/20"><i className="fa-solid fa-trash"></i> 刪除此航班</button>
                             </div>
                         </div>
                     );
@@ -1411,100 +1231,32 @@
                         <div className="bg-gradient-to-br from-sky-500 to-indigo-600 rounded-3xl p-5 text-white shadow-xl relative overflow-hidden mt-2 mb-5">
                             <div className="absolute -right-8 -bottom-8 opacity-10 text-[130px]"><i className="fa-solid fa-plane"></i></div>
                             <h2 className="text-xl font-black mb-1 flex items-center gap-2"><i className="fa-solid fa-ticket-simple text-[20px]"></i> 航班訊息</h2>
-                            <p className="text-sm opacity-80">輸入航班編號或上傳機票截圖</p>
+                            <p className="text-sm opacity-80">手動輸入航班資訊</p>
                         </div>
 
-                        {showApiSetup && <ApiSetupPanel />}
-
                         <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-5">
-                            <div className="flex justify-between items-center mb-3">
-                                <p className="text-xs font-bold text-gray-500">新增航班</p>
-                                <button onClick={() => setShowManualInput(!showManualInput)} className="text-[11px] text-gray-400 hover:text-gray-600 flex items-center gap-1">
-                                    <i className={`fa-solid ${showManualInput ? 'fa-magnifying-glass' : 'fa-pen-to-square'}`}></i>
-                                    {showManualInput ? '切換自動查詢' : '手動輸入'}
-                                </button>
-                            </div>
                             <div className="flex gap-2 mb-3">
                                 <button onClick={() => setSearchType('outbound')} className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${searchType === 'outbound' ? 'text-white shadow-sm' : 'bg-gray-100 text-gray-500'}`} style={{ backgroundColor: searchType === 'outbound' ? COLORS.mediumBlue : '' }}>去程</button>
                                 <button onClick={() => setSearchType('return')} className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${searchType === 'return' ? 'text-white shadow-sm' : 'bg-gray-100 text-gray-500'}`} style={{ backgroundColor: searchType === 'return' ? COLORS.mediumBlue : '' }}>回程</button>
                             </div>
 
-                            {!showManualInput && (
-                                <div className="space-y-3">
-                                    <div className="flex gap-2">
-                                        <input type="text" placeholder="航班編號 (例: BR123)" className="flex-1 p-3 border border-gray-200 rounded-xl text-sm font-mono uppercase tracking-wider bg-gray-50" value={searchCode} onChange={e => { setSearchCode(e.target.value.toUpperCase()); setSearchError(''); }} onKeyDown={e => e.key === 'Enter' && handleSearch()} />
-                                        <button onClick={handleSearch} disabled={isSearching || !searchCode} className="px-4 py-3 rounded-xl text-white font-bold text-sm transition-all disabled:opacity-40 flex items-center gap-1.5" style={{ backgroundColor: COLORS.mediumBlue }}>
-                                            {isSearching ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-magnifying-glass"></i>}
-                                            {isSearching ? '' : '查詢'}
-                                        </button>
-                                    </div>
-                                    <div className="flex items-center gap-3"><div className="flex-1 h-[1px] bg-gray-100"></div><span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">或</span><div className="flex-1 h-[1px] bg-gray-100"></div></div>
-                                    <div className="space-y-2">
-                                        <label className={`w-full py-3 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] ${isOcrLoading ? 'bg-slate-50 border-blue-200' : 'bg-blue-50/30 border-blue-100 hover:border-blue-200 hover:bg-blue-50'}`}>
-                                            {isOcrLoading ? <><i className="fa-solid fa-circle-notch fa-spin text-blue-500"></i> <span className="text-xs font-bold text-blue-500">正在處理...</span></> : <><i className="fa-solid fa-camera text-blue-500"></i> <span className="text-xs font-bold text-blue-600">上傳機票截圖</span></>}
-                                            <input type="file" accept="image/*" className="hidden" onChange={handleTicketUpload} disabled={isOcrLoading} />
-                                        </label>
-                                        
-                                        <div className="relative">
-                                            <textarea 
-                                                placeholder="或直接貼上航班查詢頁面的文字 (自動辨識)"
-                                                className="w-full p-3 border border-blue-100 rounded-xl text-[11px] bg-blue-50/20 focus:bg-white focus:ring-2 focus:ring-blue-400 outline-none transition-all h-20 resize-none"
-                                                onChange={(e) => {
-                                                    const text = e.target.value;
-                                                    if (text.length > 10) {
-                                                        // 簡易本地解析邏輯
-                                                        const codeMatch = text.match(/[A-Z]{2,3}\d{3,4}/);
-                                                        const timeMatch = text.match(/\d{1,2}:\d{2}/g);
-                                                        const terminalMatch = text.match(/[Tt]\d/g);
-                                                        
-                                                        if (codeMatch || timeMatch) {
-                                                            const newCode = codeMatch ? codeMatch[0] : manualForm.code;
-                                                            setManualForm(prev => ({
-                                                                ...prev,
-                                                                code: newCode,
-                                                                depTime: timeMatch ? timeMatch[0] : prev.depTime,
-                                                                arrTime: timeMatch && timeMatch[1] ? timeMatch[1] : prev.arrTime,
-                                                                depTerminal: terminalMatch ? terminalMatch[0] : prev.depTerminal,
-                                                                arrTerminal: terminalMatch && terminalMatch[1] ? terminalMatch[1] : prev.arrTerminal
-                                                            }));
-                                                            // 更新搜尋框，避免後續連動錯誤
-                                                            setSearchCode(newCode);
-                                                            setShowManualInput(true);
-                                                            showToast('✅ 已從貼上文字中自動提取資訊！');
-                                                        }
-                                                    }
-                                                }}
-                                            ></textarea>
-                                            <div className="absolute right-3 bottom-3 text-[10px] text-blue-400 pointer-events-none">AI 解析中</div>
-                                        </div>
-                                    </div>
-                                    {searchError && (
-                                        <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded-xl">
-                                            <p className="text-xs text-red-600 mb-2"><i className="fa-solid fa-circle-exclamation mr-1"></i>{searchError}</p>
-                                            <div className="flex gap-2">
-                                                <button onClick={() => window.open(`https://www.flightradar24.com/search?query=${searchCode}`, '_blank')} className="flex-1 py-1.5 bg-white border border-red-200 text-[10px] text-red-600 rounded-lg font-bold">FR24 快速查</button>
-                                                <button onClick={() => window.open(`https://tw.trip.com/flights/status-${searchCode}/`, '_blank')} className="flex-1 py-1.5 bg-white border border-red-200 text-[10px] text-red-600 rounded-lg font-bold">Trip.com 查</button>
-                                            </div>
-                                        </div>
-                                    )}
+                            <div className="space-y-2">
+                                <input type="text" placeholder="航班編號 (必填，例: BR123)" className="w-full p-2.5 border border-gray-200 rounded-xl text-sm font-mono uppercase bg-gray-50" value={manualForm.code} onChange={e => setManualForm({...manualForm, code: e.target.value.toUpperCase()})} />
+                                <input type="text" placeholder="航空公司 (例: 長榮航空)" className="w-full p-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50" value={manualForm.airline} onChange={e => setManualForm({...manualForm, airline: e.target.value})} />
+                                <div className="grid grid-cols-2 gap-2">
+                                    <input type="text" placeholder="出發地 (如 TPE)" className="p-2.5 border border-gray-200 rounded-xl text-sm font-mono uppercase bg-gray-50" value={manualForm.departure} onChange={e => setManualForm({...manualForm, departure: e.target.value.toUpperCase()})} />
+                                    <input type="text" placeholder="目的地 (如 NRT)" className="p-2.5 border border-gray-200 rounded-xl text-sm font-mono uppercase bg-gray-50" value={manualForm.arrival} onChange={e => setManualForm({...manualForm, arrival: e.target.value.toUpperCase()})} />
                                 </div>
-                            )}
-
-                            {showManualInput && (
-                                <div className="space-y-2">
-                                    <input type="text" placeholder="航班編號 (必填)" className="w-full p-2.5 border border-gray-200 rounded-xl text-sm font-mono uppercase bg-gray-50" value={manualForm.code} onChange={e => setManualForm({...manualForm, code: e.target.value.toUpperCase()})} />
-                                    <input type="text" placeholder="航空公司" className="w-full p-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50" value={manualForm.airline} onChange={e => setManualForm({...manualForm, airline: e.target.value})} />
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <input type="text" placeholder="出發 (如 TPE)" className="p-2.5 border border-gray-200 rounded-xl text-sm font-mono uppercase bg-gray-50" value={manualForm.departure} onChange={e => setManualForm({...manualForm, departure: e.target.value.toUpperCase()})} />
-                                        <input type="text" placeholder="抵達 (如 HKG)" className="p-2.5 border border-gray-200 rounded-xl text-sm font-mono uppercase bg-gray-50" value={manualForm.arrival} onChange={e => setManualForm({...manualForm, arrival: e.target.value.toUpperCase()})} />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <input type="text" placeholder="起飛 (6/25 17:00)" className="p-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50" value={manualForm.depTime} onChange={e => setManualForm({...manualForm, depTime: e.target.value})} />
-                                        <input type="text" placeholder="降落 (6/25 18:55)" className="p-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50" value={manualForm.arrTime} onChange={e => setManualForm({...manualForm, arrTime: e.target.value})} />
-                                    </div>
-                                    <button onClick={saveManualFlight} className="w-full py-3 rounded-xl text-white font-bold text-sm shadow-md mt-2" style={{ backgroundColor: COLORS.mediumBlue }}>儲存航班資訊</button>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <input type="text" placeholder="起飛 (例: 6/25 17:00)" className="p-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50" value={manualForm.depTime} onChange={e => setManualForm({...manualForm, depTime: e.target.value})} />
+                                    <input type="text" placeholder="降落 (例: 6/25 21:00)" className="p-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50" value={manualForm.arrTime} onChange={e => setManualForm({...manualForm, arrTime: e.target.value})} />
                                 </div>
-                            )}
+                                <div className="grid grid-cols-2 gap-2">
+                                    <input type="text" placeholder="出發航廈 (例: T2)" className="p-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50" value={manualForm.depTerminal} onChange={e => setManualForm({...manualForm, depTerminal: e.target.value})} />
+                                    <input type="text" placeholder="抵達航廈 (例: T1)" className="p-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50" value={manualForm.arrTerminal} onChange={e => setManualForm({...manualForm, arrTerminal: e.target.value})} />
+                                </div>
+                                <button onClick={saveManualFlight} className="w-full py-3 rounded-xl text-white font-bold text-sm shadow-md mt-2" style={{ backgroundColor: COLORS.mediumBlue }}>儲存航班資訊</button>
+                            </div>
                         </div>
 
                         <div className="space-y-4">
@@ -1513,14 +1265,13 @@
                             {!flightInfo.outbound.code && !flightInfo.return.code && (
                                 <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
                                     <i className="fa-solid fa-plane-arrival text-4xl text-gray-200 mb-4"></i>
-                                    <p className="text-gray-400 text-xs">尚無航班資訊，請由上方新增</p>
+                                    <p className="text-gray-400 text-xs">尚無航班資訊，請由上方手動新增</p>
                                 </div>
                             )}
                         </div>
                     </div>
                 );
             };
-
 
             // --- 介面渲染: 小工具箱 (匯率、備份、重設) ---
             const RenderTools = () => {
@@ -1534,13 +1285,9 @@
                     const fromObj = CURRENCIES.find(c => c.code === fromCode);
                     const toObj = CURRENCIES.find(c => c.code === toCode);
                     
-                    // 獲取相對於台幣的匯率
                     const fromRate = (fromCode === currency.code) ? exchangeRate : (fromObj ? fromObj.defaultRate : 1);
                     const toRate = (toCode === currency.code) ? exchangeRate : (toObj ? toObj.defaultRate : 1);
                     
-                    // 計算兩者之間的交叉匯率 (1 from = ? to)
-                    // 這裡的 rate 定義是 1 TWD = rate Foreign
-                    // 所以 1 From = (1/fromRate) TWD = (1/fromRate) * toRate To
                     return toRate / fromRate;
                 };
 
@@ -1572,7 +1319,6 @@
                 const handleShareData = () => {
                     let shareText = `✈️ 【${currentTrip.country}·${currentTrip.city}】旅遊清單分享\n\n`;
                     
-                    // 行程部分
                     if (itinerary.length > 0) {
                         shareText += `📅 行程總覽：\n`;
                         const sortedDays = [...new Set(itinerary.map(i => i.day))].sort((a, b) => a - b);
@@ -1586,7 +1332,6 @@
                         shareText += `\n`;
                     }
 
-                    // 購物車部分
                     if (shoppingList.length > 0) {
                         shareText += `🛒 購物清單預算：\n`;
                         shoppingList.forEach(item => {
@@ -1617,18 +1362,14 @@
                     });
                 };
                 
-
-
                 return (
                     <div className="p-4 pb-24 space-y-6">
-                        {/* 即時匯率換算器 - 上下並列卡片設計 */}
                         <div className="bg-white p-6 rounded-3xl border shadow-lg">
                             <h3 className="font-bold text-sm mb-6 flex items-center gap-2" style={{ color: COLORS.darkText }}>
                                 <i className="fa-solid fa-calculator" style={{ color: '#495B7D' }}></i> 匯率換算
                             </h3>
                             
                             <div className="space-y-3">
-                                {/* 上方區塊 */}
                                 <div className="bg-slate-50 rounded-2xl p-4 border border-gray-100 focus-within:ring-2 focus-within:ring-[#8BA3C5]/30 transition-all">
                                     <div className="flex justify-between items-center mb-2">
                                         <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">支付 / 持有</label>
@@ -1655,7 +1396,6 @@
                                     </div>
                                 </div>
 
-                                {/* 中間切換按鈕 */}
                                 <div className="flex justify-center -my-6 relative z-10">
                                     <button 
                                         onClick={handleSwap}
@@ -1665,7 +1405,6 @@
                                     </button>
                                 </div>
 
-                                {/* 下方區塊 */}
                                 <div className="bg-slate-50 rounded-2xl p-4 border border-gray-100 focus-within:ring-2 focus-within:ring-[#8BA3C5]/30 transition-all">
                                     <div className="flex justify-between items-center mb-2">
                                         <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">換取 / 目標</label>
@@ -1692,7 +1431,6 @@
                                     </div>
                                 </div>
 
-                                {/* 匯率資訊 */}
                                 <div className="text-center pt-4">
                                     <div className="inline-block px-4 py-1.5 bg-[#F0ECDD]/50 rounded-full text-[11px] font-bold text-gray-500">
                                         1 <span className="text-[#8BA3C5]">{calcCurrency1}</span> = {currentRate.toFixed(4)} <span className="text-[#8BA3C5]">{calcCurrency2}</span>
@@ -1701,7 +1439,6 @@
                             </div>
                         </div>
 
-                        {/* 分享行程與清單 */}
                         <div className="bg-white p-5 rounded-2xl border shadow-sm">
                             <h3 className="font-bold text-sm mb-2 flex items-center gap-2" style={{ color: COLORS.darkText }}>
                                 <i className="fa-solid fa-share-nodes" style={{ color: '#8BA3C5' }}></i> 分享旅遊資訊
@@ -1712,7 +1449,6 @@
                             </button>
                         </div>
 
-                        {/* 資料備份與還原 */}
                         <div className="bg-white p-5 rounded-2xl border shadow-sm">
                             <h3 className="font-bold text-sm mb-4 flex items-center gap-2" style={{ color: COLORS.darkText }}>
                                 <i className="fa-solid fa-cloud-arrow-up text-sky-500"></i> 資料雲端備份與還原
@@ -1728,14 +1464,13 @@
                             </div>
                         </div>
 
-                        {/* 危險區域 */}
                         <div className="bg-red-50 p-5 rounded-2xl border border-red-100 shadow-sm">
                             <h3 className="font-bold text-sm mb-1 text-red-600 flex items-center gap-2">
                                 <i className="fa-solid fa-triangle-exclamation"></i> 危險區域
                             </h3>
                             <p className="text-[11px] text-red-400 mb-4 font-medium">按下去就全都消失囉 要確。</p>
                             <button onClick={handleResetData} className="w-full py-3 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm bg-red-600 hover:bg-red-700 transition-all">
-                                <i className="fa-solid fa-rotate-left"></i> 清空
+                                <i className="fa-solid fa-rotate-left"></i> 清空所有資料
                             </button>
                         </div>
                     </div>
@@ -1766,7 +1501,6 @@
                             <span className="text-3xl">✈️</span>
                             <div>
                                 <h2 className="font-black text-slate-800 tracking-tight">旅遊小幫手 3.0</h2>
-                  
                             </div>
                         </div>
                         <nav className="p-4 space-y-2">
@@ -1782,9 +1516,6 @@
                                 </button>
                             ))}
                         </nav>
-                        <div className="absolute bottom-6 left-6 right-6">
-             
-                        </div>
                     </div>
 
                     <header className="p-4 border-b flex justify-between items-center bg-white shadow-sm sticky top-0 z-40">
@@ -1796,7 +1527,6 @@
                                 <h1 className="text-base font-black tracking-wide" style={{ color: COLORS.darkText }}>
                                     {menuItems.find(m => m.id === activeTab)?.label || '旅遊小幫手'}
                                 </h1>
-   
                             </div>
                         </div>
                         <div className="flex items-center gap-1 bg-gray-50 border p-1 rounded-lg">
@@ -1821,38 +1551,6 @@
                     {toastMessage && (
                         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white font-medium text-xs px-4 py-2.5 rounded-xl shadow-xl z-50 backdrop-blur-sm border border-white/10 flex items-center gap-2 transition-all duration-300 animate-bounce">
                             <i className="fa-solid fa-circle-info text-sky-400"></i> {toastMessage}
-                        </div>
-                    )}
-
-                    {addToItinModal.isOpen && (
-                        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                            <div className="bg-white w-full max-w-sm rounded-2xl p-5 shadow-2xl border animate-in fade-in zoom-in-95 duration-200">
-                                <h3 className="font-bold text-sm mb-1 text-gray-800">📌 直接引流加入行程排程</h3>
-                                <p className="text-xs text-gray-400 mb-4">將此景點/商品設定特定天數時間以加入主行程中。</p>
-                                <div className="space-y-3 mb-5">
-                                    <div className="flex flex-col gap-1">
-                                        <label className="text-xs font-bold text-gray-600">選擇哪一天 (Day)</label>
-                                        <select className="p-2 border rounded-lg bg-white text-sm" value={modalDayChoice} onChange={e => setModalDayChoice(e.target.value)}>
-                                            {uniqueDays.map(d => <option key={d} value={d}>{d}</option>)}
-                                            <option value="__CUSTOM__">+ 手動建立新天數</option>
-                                        </select>
-                                    </div>
-                                    {modalDayChoice === '__CUSTOM__' && (
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-xs font-bold text-gray-600">手動輸入天數代碼</label>
-                                            <input type="text" placeholder="例如: Day 4" className="p-2 border rounded-lg text-sm bg-white" value={modalCustomDay} onChange={e => setModalCustomDay(e.target.value)} />
-                                        </div>
-                                    )}
-                                    <div className="flex flex-col gap-1">
-                                        <label className="text-xs font-bold text-gray-600">預計抵達/購買時間</label>
-                                        <input type="time" className="p-2 border rounded-lg text-sm bg-white" value={modalTime} onChange={e => setModalTime(e.target.value)} />
-                                    </div>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button onClick={confirmAddToItinerary} className="flex-1 py-2 rounded-xl text-white font-bold text-xs shadow-md" style={{ backgroundColor: COLORS.mediumBlue }}>確認加入行程表</button>
-                                    <button onClick={() => { setAddToItinModal({isOpen: false, item: null}); setModalCustomDay(''); }} className="px-4 py-2 rounded-xl bg-gray-100 text-gray-500 font-bold text-xs">取消</button>
-                                </div>
-                            </div>
                         </div>
                     )}
 
