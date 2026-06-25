@@ -1229,9 +1229,9 @@
                                     <i className="ph ph-airplane-takeoff text-2xl" style={{ color: '#495B7D' }}></i>
                                     <h1 className="text-xl font-bold tracking-wide" style={{ color: '#495B7D' }}>行前準備清單</h1>
                                 </div>
-                                <div className="p-1 rounded-full transition-colors" style={{ backgroundColor: isExpanded ? '#8BA3C5' : 'transparent' }}>
-                                    <i className={`ph ph-caret-down text-2xl transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} style={{ color: isExpanded ? '#E8ECEF' : '#495B7D' }}></i>
-                                </div>
+                              
+                                 
+                                
                             </div>
 
                             <div className="flex justify-between items-end mb-2">
@@ -1511,7 +1511,7 @@
         // 主程式 App
         // ==========================================
         const App = () => {
-            const [activeTab, setActiveTab] = useState('flight');
+            const [activeTab, setActiveTab] = useState('must');
             const [toastMessage, setToastMessage] = useState('');
             const [isDrawerOpen, setIsDrawerOpen] = useState(false);
             const showToast = (message) => { setToastMessage(message); setTimeout(() => setToastMessage(''), 2500); };
