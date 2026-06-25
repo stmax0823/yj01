@@ -14,8 +14,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
-        body { margin: 0; padding: 0; background-color: #F0ECDD; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent;}
-        .app-container { max-width: 480px; margin: 0 auto; background-color: #F0ECDD; min-height: 100vh; position: relative; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; }
+        body { margin: 0; padding: 0; background-color: #E8ECEF; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent;}
+        .app-container { max-width: 480px; margin: 0 auto; background-color: #E8ECEF; min-height: 100vh; position: relative; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; }
         .content-area { flex: 1; overflow-y: auto; padding-bottom: 20px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -26,6 +26,10 @@
         .clear-btn { cursor: pointer; color: #94a3b8; transition: color 0.2s; }
         .clear-btn:hover { color: #e11d48; }
     </style>
+	
+	
+	
+	
 </head>
 <body>
     <div id="root"></div>
@@ -34,7 +38,7 @@
         const { useState, useMemo, useEffect } = React;
 
         // --- 常數設定 ---
-        const COLORS = { bg: '#F0ECDD', lightBlue: '#8BA3C5', mediumBlue: '#495B7D', darkText: '#23354D', white: '#FFFFFF' };
+        const COLORS = { bg: '#E8ECEF', lightBlue: '#8BA3C5', mediumBlue: '#495B7D', darkText: '#495B7D', white: '#FFFFFF' };
         
         const CURRENCIES = [
             { code: 'KRW', symbol: '₩', name: '韓元', defaultRate: 42 },    
@@ -80,16 +84,19 @@
         const INITIAL_ITEM_TYPES = ['化妝品', '保養品', '服飾', '零食', '伴手禮', '免稅精品', '3C'];
 
         const DEFAULT_PREP_LIST = [
-            { id: 1, text: '護照 (確認效期 > 6個月) & 簽證', checked: false },
-            { id: 2, text: '外幣現金 & 信用卡 (確認海外回饋與開通)', checked: false },
-            { id: 3, text: '當地網卡 / eSIM / 電信漫遊設定', checked: false },
-            { id: 4, text: '萬用轉接頭 & 行動電源、充電線', checked: false },
-            { id: 5, text: '隨身常備藥 (感冒、腸胃、暈車、止痛)', checked: false },
-            { id: 6, text: '個人盥洗用品 / 保養品 / 防曬', checked: false },
-            { id: 7, text: '機票與住宿憑證 (建議存一份截圖)', checked: false },
-            { id: 8, text: '摺疊環保袋 (購物備用)', checked: false },
-            { id: 9, text: '輕便雨具 / 摺疊傘', checked: false },
-            { id: 10, text: '旅遊平安險 / 不便險憑證', checked: false }
+            { id: 1, text: '護照 (確認效期六個月以上)', checked: false, category: '重要證件' },
+            { id: 2, text: '簽證 / 台胞證', checked: false, category: '重要證件' },
+            { id: 3, text: '機票 / 登機證 (電子或紙本)', checked: false, category: '重要證件' },
+            { id: 4, text: '身分證 / 駕照', checked: false, category: '重要證件' },
+            { id: 5, text: '信用卡 (確認已開通海外刷卡)', checked: false, category: '財務' },
+            { id: 6, text: '外幣現金', checked: false, category: '財務' },
+            { id: 7, text: '手機 & 充電線', checked: false, category: '電子產品' },
+            { id: 8, text: '行動電源 (放隨身行李)', checked: false, category: '電子產品' },
+            { id: 9, text: '萬用轉接頭', checked: false, category: '電子產品' },
+            { id: 10, text: '換洗衣物 (依天數)', checked: false, category: '生活衣物' },
+            { id: 11, text: '好走的鞋子', checked: false, category: '生活衣物' },
+            { id: 12, text: '常備藥品 (腸胃、感冒、暈車藥)', checked: false, category: '其他' },
+            { id: 13, text: '個人盥洗用品 / 保養品', checked: false, category: '其他' },
         ];
 
         const getTwdEquivalent = (amount, currencyCode, rate) => {
@@ -152,24 +159,24 @@
             const [isDrawerOpen, setIsDrawerOpen] = useState(false);
             const showToast = (message) => { setToastMessage(message); setTimeout(() => setToastMessage(''), 2500); };
 
-              // 💾 狀態初始化 (已改回 v6_expanded，你的舊資料全部都會回來)
-            const [destinations, setDestinations] = useState(() => JSON.parse(localStorage.getItem('app_destinations_v6_expanded')) || INITIAL_DESTINATIONS);
-            const [currentTrip, setCurrentTrip] = useState(() => JSON.parse(localStorage.getItem('app_current_trip_v6_expanded')) || { country: '韓國', city: '首爾' });
-            const [currency, setCurrency] = useState(() => JSON.parse(localStorage.getItem('app_currency_v6_expanded')) || CURRENCIES[0]);
-            const [exchangeRate, setExchangeRate] = useState(() => Number(localStorage.getItem('app_exchange_rate_v6_expanded')) || CURRENCIES[0].defaultRate);
-            const [itinerary, setItinerary] = useState(() => JSON.parse(localStorage.getItem('app_itinerary_v6_expanded')) || []);
-            const [stores, setStores] = useState(() => JSON.parse(localStorage.getItem('app_stores_v6_expanded')) || INITIAL_STORES);
-            const [mustEats, setMustEats] = useState(() => JSON.parse(localStorage.getItem('app_must_eats_v6_expanded')) || []);
-            const [mustBuys, setMustBuys] = useState(() => JSON.parse(localStorage.getItem('app_must_buys_v6_expanded')) || []);
-            const [shoppingList, setShoppingList] = useState(() => JSON.parse(localStorage.getItem('app_shopping_list_v6_expanded')) || []);
-            const [splitMembers, setSplitMembers] = useState(() => JSON.parse(localStorage.getItem('app_split_members_v6_expanded')) || ['自己', '朋友A']);
-            const [splitExpenses, setSplitExpenses] = useState(() => JSON.parse(localStorage.getItem('app_split_expenses_v6_expanded')) || []);
-            const [prepList, setPrepList] = useState(() => JSON.parse(localStorage.getItem('app_prep_list_v6_expanded')) || DEFAULT_PREP_LIST);
+              // 💾 狀態初始化 (已改回 v6_final_styled_260625，你的舊資料全部都會回來)
+            const [destinations, setDestinations] = useState(() => JSON.parse(localStorage.getItem('app_destinations_v6_final_styled_260625')) || INITIAL_DESTINATIONS);
+            const [currentTrip, setCurrentTrip] = useState(() => JSON.parse(localStorage.getItem('app_current_trip_v6_final_styled_260625')) || { country: '韓國', city: '首爾' });
+            const [currency, setCurrency] = useState(() => JSON.parse(localStorage.getItem('app_currency_v6_final_styled_260625')) || CURRENCIES[0]);
+            const [exchangeRate, setExchangeRate] = useState(() => Number(localStorage.getItem('app_exchange_rate_v6_final_styled_260625')) || CURRENCIES[0].defaultRate);
+            const [itinerary, setItinerary] = useState(() => JSON.parse(localStorage.getItem('app_itinerary_v6_final_styled_260625')) || []);
+            const [stores, setStores] = useState(() => JSON.parse(localStorage.getItem('app_stores_v6_final_styled_260625')) || INITIAL_STORES);
+            const [mustEats, setMustEats] = useState(() => JSON.parse(localStorage.getItem('app_must_eats_v6_final_styled_260625')) || []);
+            const [mustBuys, setMustBuys] = useState(() => JSON.parse(localStorage.getItem('app_must_buys_v6_final_styled_260625')) || []);
+            const [shoppingList, setShoppingList] = useState(() => JSON.parse(localStorage.getItem('app_shopping_list_v6_final_styled_260625')) || []);
+            const [splitMembers, setSplitMembers] = useState(() => JSON.parse(localStorage.getItem('app_split_members_v6_final_styled_260625')) || ['自己', '朋友A']);
+            const [splitExpenses, setSplitExpenses] = useState(() => JSON.parse(localStorage.getItem('app_split_expenses_v6_final_styled_260625')) || []);
+            const [prepList, setPrepList] = useState(() => JSON.parse(localStorage.getItem('app_prep_list_v6_final_styled_260625')) || DEFAULT_PREP_LIST);
             const [mustGoType, setMustGoType] = useState('eat');
-            const [foodTypes, setFoodTypes] = useState(() => JSON.parse(localStorage.getItem('app_food_types_v6_expanded')) || INITIAL_FOOD_TYPES);
-            const [itemTypes, setItemTypes] = useState(() => JSON.parse(localStorage.getItem('app_item_types_v6_expanded')) || INITIAL_ITEM_TYPES);
+            const [foodTypes, setFoodTypes] = useState(() => JSON.parse(localStorage.getItem('app_food_types_v6_final_styled_260625')) || INITIAL_FOOD_TYPES);
+            const [itemTypes, setItemTypes] = useState(() => JSON.parse(localStorage.getItem('app_item_types_v6_final_styled_260625')) || INITIAL_ITEM_TYPES);
             const EMPTY_FLIGHT = { code: '', airline: '', departure: '', arrival: '', depAirport: '', arrAirport: '', depTerminal: '', arrTerminal: '', depGate: '', arrGate: '', depTime: '', arrTime: '', depActual: '', arrActual: '', duration: '', status: '準時', aircraft: '', baggage: '', delay: '' };
-            const [flightInfo, setFlightInfo] = useState(() => JSON.parse(localStorage.getItem('app_flight_info_v6_expanded')) || { 
+            const [flightInfo, setFlightInfo] = useState(() => JSON.parse(localStorage.getItem('app_flight_info_v6_final_styled_260625')) || { 
                 outbound: { flightNumber: 'KE 186', airline: '大韓航空', departureCode: 'TPE', arrivalCode: 'ICN', departureTime: '2026-06-25T08:30', arrivalTime: '2026-06-25T12:00', departureTerminal: '1', arrivalTerminal: '2' },
                 return: { flightNumber: 'KE 185', airline: '大韓航空', departureCode: 'ICN', arrivalCode: 'TPE', departureTime: '2026-06-30T14:30', arrivalTime: '2026-06-30T17:15', departureTerminal: '2', arrivalTerminal: '1' }
             });
@@ -226,21 +233,21 @@
             }, [currentTrip.city]);
 // 自動存檔機制
             useEffect(() => {
-                localStorage.setItem('app_destinations_v6_expanded', JSON.stringify(destinations));
-                localStorage.setItem('app_current_trip_v6_expanded', JSON.stringify(currentTrip));
-                localStorage.setItem('app_currency_v6_expanded', JSON.stringify(currency));
-                localStorage.setItem('app_exchange_rate_v6_expanded', String(exchangeRate));
-                localStorage.setItem('app_itinerary_v6_expanded', JSON.stringify(itinerary));
-                localStorage.setItem('app_stores_v6_expanded', JSON.stringify(stores));
-                localStorage.setItem('app_must_eats_v6_expanded', JSON.stringify(mustEats));
-                localStorage.setItem('app_must_buys_v6_expanded', JSON.stringify(mustBuys));
-                localStorage.setItem('app_shopping_list_v6_expanded', JSON.stringify(shoppingList));
-                localStorage.setItem('app_split_members_v6_expanded', JSON.stringify(splitMembers));
-                localStorage.setItem('app_split_expenses_v6_expanded', JSON.stringify(splitExpenses));
-                localStorage.setItem('app_prep_list_v6_expanded', JSON.stringify(prepList));
-                localStorage.setItem('app_food_types_v6_expanded', JSON.stringify(foodTypes));
-                localStorage.setItem('app_item_types_v6_expanded', JSON.stringify(itemTypes));
-                localStorage.setItem('app_flight_info_v6_expanded', JSON.stringify(flightInfo));
+                localStorage.setItem('app_destinations_v6_final_styled_260625', JSON.stringify(destinations));
+                localStorage.setItem('app_current_trip_v6_final_styled_260625', JSON.stringify(currentTrip));
+                localStorage.setItem('app_currency_v6_final_styled_260625', JSON.stringify(currency));
+                localStorage.setItem('app_exchange_rate_v6_final_styled_260625', String(exchangeRate));
+                localStorage.setItem('app_itinerary_v6_final_styled_260625', JSON.stringify(itinerary));
+                localStorage.setItem('app_stores_v6_final_styled_260625', JSON.stringify(stores));
+                localStorage.setItem('app_must_eats_v6_final_styled_260625', JSON.stringify(mustEats));
+                localStorage.setItem('app_must_buys_v6_final_styled_260625', JSON.stringify(mustBuys));
+                localStorage.setItem('app_shopping_list_v6_final_styled_260625', JSON.stringify(shoppingList));
+                localStorage.setItem('app_split_members_v6_final_styled_260625', JSON.stringify(splitMembers));
+                localStorage.setItem('app_split_expenses_v6_final_styled_260625', JSON.stringify(splitExpenses));
+                localStorage.setItem('app_prep_list_v6_final_styled_260625', JSON.stringify(prepList));
+                localStorage.setItem('app_food_types_v6_final_styled_260625', JSON.stringify(foodTypes));
+                localStorage.setItem('app_item_types_v6_final_styled_260625', JSON.stringify(itemTypes));
+                localStorage.setItem('app_flight_info_v6_final_styled_260625', JSON.stringify(flightInfo));
             }, [destinations, currentTrip, currency, exchangeRate, itinerary, stores, foodTypes, itemTypes, mustEats, mustBuys, shoppingList, splitMembers, splitExpenses, prepList, flightInfo]);
 
             const handleCurrencyChange = (code) => {
@@ -314,14 +321,14 @@
             const handleResetData = () => {
                 if (!window.confirm('⚠️ 確定要清空所有設定與資料？⚠️')) return;
                 const keys = [
-                    'app_destinations_v6_expanded', 'app_current_trip_v6_expanded',
-                    'app_currency_v6_expanded', 'app_exchange_rate_v6_expanded',
-                    'app_itinerary_v6_expanded', 'app_stores_v6_expanded',
-                    'app_must_eats_v6_expanded', 'app_must_buys_v6_expanded',
-                    'app_shopping_list_v6_expanded', 'app_split_members_v6_expanded',
-                    'app_split_expenses_v6_expanded', 'app_prep_list_v6_expanded',
-                    'app_food_types_v6_expanded', 'app_item_types_v6_expanded',
-                    'app_flight_info_v6_expanded'
+                    'app_destinations_v6_final_styled_260625', 'app_current_trip_v6_final_styled_260625',
+                    'app_currency_v6_final_styled_260625', 'app_exchange_rate_v6_final_styled_260625',
+                    'app_itinerary_v6_final_styled_260625', 'app_stores_v6_final_styled_260625',
+                    'app_must_eats_v6_final_styled_260625', 'app_must_buys_v6_final_styled_260625',
+                    'app_shopping_list_v6_final_styled_260625', 'app_split_members_v6_final_styled_260625',
+                    'app_split_expenses_v6_final_styled_260625', 'app_prep_list_v6_final_styled_260625',
+                    'app_food_types_v6_final_styled_260625', 'app_item_types_v6_final_styled_260625',
+                    'app_flight_info_v6_final_styled_260625'
                 ];
                 keys.forEach(k => localStorage.removeItem(k));
                 setDestinations(INITIAL_DESTINATIONS);
@@ -1005,36 +1012,81 @@
             };
 
               // --- 介面渲染: 行前檢查清單 ---
+            
+            
             const RenderPrepList = () => {
                 const [newTodo, setNewTodo] = useState('');
-                const handleAddTodo = () => { if (!newTodo.trim()) return; setPrepList([...prepList, { id: Date.now(), text: newTodo.trim(), checked: false }]); setNewTodo(''); showToast("成功加入檢查清單！"); };
+                const handleAddTodo = () => { if (!newTodo.trim()) return; setPrepList([...prepList, { id: Date.now(), text: newTodo.trim(), checked: false, category: '其他' }]); setNewTodo(''); showToast("成功加入檢查清單！"); };
                 const toggleTodo = (id) => setPrepList(prepList.map(t => t.id === id ? { ...t, checked: !t.checked } : t));
                 const deleteTodo = (id) => setPrepList(prepList.filter(t => t.id !== id));
 
+                // 分組邏輯
+                const groupedItems = prepList.reduce((acc, item) => {
+                    const cat = item.category || '其他';
+                    if (!acc[cat]) acc[cat] = [];
+                    acc[cat].push(item);
+                    return acc;
+                }, {});
+
+                // 進度計算
+                const total = prepList.length;
+                const completed = prepList.filter(item => item.checked).length;
+                const percentage = total === 0 ? 0 : Math.round((completed / total) * 100);
+
                 return (
                     <div className="p-4 pb-24">
-                        <h2 className="text-xl font-bold mb-1" style={{ color: COLORS.darkText }}>出國必備行前檢查</h2>
-                        <p className="text-xs text-gray-500 mb-4">打包行李與出發前的核心追蹤核對表。</p>
+                        <div className="mb-6">
+                            <h2 className="text-xl font-bold mb-1" style={{ color: COLORS.darkText }}>出國必備行前檢查</h2>
+                            <p className="text-xs text-gray-500 mb-4">打包行李與出發前的核心追蹤核對表。</p>
+                            
+                            {/* 進度條區域 */}
+                            <div className="bg-white p-4 rounded-2xl border shadow-sm mb-4">
+                                <div className="flex justify-between items-end mb-2">
+                                    <span className="text-xs font-bold" style={{ color: COLORS.mediumBlue }}>準備進度</span>
+                                    <span className="text-lg font-black" style={{ color: COLORS.mediumBlue }}>{percentage}%</span>
+                                </div>
+                                <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+                                    <div 
+                                        className="h-full transition-all duration-700 ease-out" 
+                                        style={{ width: `${percentage}%`, backgroundColor: COLORS.lightBlue }}
+                                    ></div>
+                                </div>
+                                <div className="mt-2 text-[10px] text-right font-bold text-gray-400">
+                                    已完成 {completed} / {total} 項
+                                </div>
+                            </div>
+                        </div>
                         
-                        <div className="flex gap-2 mb-4">
+                        <div className="flex gap-2 mb-6">
                             <input type="text" placeholder="手動增加備忘項目..." className="flex-1 p-2 border rounded-lg text-sm bg-white" value={newTodo} onChange={e => setNewTodo(e.target.value)} />
                             <button onClick={handleAddTodo} className="px-4 py-2 rounded-lg text-white font-bold text-xs" style={{ backgroundColor: COLORS.mediumBlue }}>+ 新增</button>
                         </div>
 
-                        <div className="bg-white rounded-xl border shadow-sm divide-y">
-                            {prepList.map(todo => (
-                                <div key={todo.id} className="p-3 flex items-center justify-between gap-2">
-                                    <label className="flex items-center gap-3 flex-1 cursor-pointer">
-                                        <input type="checkbox" checked={todo.checked} onChange={() => toggleTodo(todo.id)} className="w-4 h-4 text-indigo-600 rounded focus:ring-0 border-gray-300" />
-                                        <span className={`text-sm ${todo.checked ? 'line-through text-gray-400 font-normal' : 'text-gray-700 font-medium'}`}>{todo.text}</span>
-                                    </label>
-                                    <button onClick={() => deleteTodo(todo.id)} className="text-gray-300 hover:text-red-500 transition-colors p-1"><i className="fa-solid fa-trash-can"></i></button>
+                        <div className="space-y-6">
+                            {Object.entries(groupedItems).map(([category, items]) => (
+                                <div key={category}>
+                                    <h3 className="text-sm font-bold mb-2 px-1 flex items-center gap-2" style={{ color: COLORS.mediumBlue }}>
+                                        <span className="w-1 h-4 rounded-full" style={{ backgroundColor: COLORS.mediumBlue }}></span>
+                                        {category}
+                                    </h3>
+                                    <div className="bg-white rounded-xl border shadow-sm divide-y">
+                                        {items.map(todo => (
+                                            <div key={todo.id} className="p-3 flex items-center justify-between gap-2">
+                                                <label className="flex items-center gap-3 flex-1 cursor-pointer">
+                                                    <input type="checkbox" checked={todo.checked} onChange={() => toggleTodo(todo.id)} className="w-4 h-4 text-indigo-600 rounded focus:ring-0 border-gray-300" />
+                                                    <span className={`text-sm ${todo.checked ? 'line-through text-gray-400 font-normal' : 'text-gray-700 font-medium'}`}>{todo.text}</span>
+                                                </label>
+                                                <button onClick={() => deleteTodo(todo.id)} className="text-gray-300 hover:text-red-500 transition-colors p-1"><i className="fa-solid fa-trash-can"></i></button>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             ))}
                         </div>
                     </div>
                 );
             };
+
 
             // --- 全球/韓國航空資料庫 (用於新版航班) ---
             const AIRLINE_DB = {
@@ -1217,7 +1269,7 @@
                         <div className="mt-5 text-center">
                             <button onClick={() => { 
                                 if(window.confirm('確定要重設所有航班資訊嗎？')) {
-                                    localStorage.removeItem('app_flight_info_v6_expanded');
+                                    localStorage.removeItem('app_flight_info_v6_final_styled_260625');
                                     window.location.reload();
                                 }
                             }} className="text-[10px] text-gray-400 underline underline-offset-2">重設為預設航班</button>
@@ -1438,7 +1490,7 @@
                 { id: 'shop', label: '即時購物車', icon: 'fa-cart-shopping' },
                 { id: 'bill', label: '多人分帳記', icon: 'fa-comments-dollar' },
                 { id: 'tools', label: '小工具', icon: 'fa-toolbox' },
-                { id: 'prep', label: '行前檢查表', icon: 'fa-list-check' }
+                { id: 'prep', label: '行前準備清單', icon: 'fa-list-check' }
             ];
 
             return (
@@ -1513,6 +1565,11 @@
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
+		
+		
+		
     </script>
 </body>
 </html>
+
+
