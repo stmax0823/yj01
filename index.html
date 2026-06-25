@@ -395,7 +395,9 @@
             const [showForm, setShowForm] = useState(false);
             const [editingMustGoId, setEditingMustGoId] = useState(null);
             const [eatForm, setEatForm] = useState({ url: '', name: '', country: currentTrip.country, city: currentTrip.city, district: '', type: '', cost: '', currency: currency.code, image: '' });
-            const [buyForm, setBuyForm] = useState({ url: '', country: currentTrip.country, store: '', type: '', cost: '', notes: '', currency: currency.code, image: '' });
+            
+            // 💡 1. 必買清單的 state 新增了 date 欄位
+            const [buyForm, setBuyForm] = useState({ url: '', country: currentTrip.country, store: '', type: '', cost: '', notes: '', currency: currency.code, image: '', date: '' });
 
             const handleImageUpload = (e, formType) => {
                 const file = e.target.files[0];
@@ -430,7 +432,8 @@
                     setMustBuys([...mustBuys, { ...buyForm, id: Date.now() }]);
                     showToast("新增商品成功！");
                 }
-                setBuyForm({ url: '', country: currentTrip.country, store: '', type: '', cost: '', notes: '', currency: currency.code, image: '' });
+                // 💡 2. 儲存後一併清空 date 欄位
+                setBuyForm({ url: '', country: currentTrip.country, store: '', type: '', cost: '', notes: '', currency: currency.code, image: '', date: '' });
                 setShowForm(false);
             };
 
@@ -452,7 +455,8 @@
                     checked: false,
                     image: item.image || null,
                     notes: '',
-                    date: ''
+                    // 💡 3. 加入購物車時自動把設定好的日期帶過去
+                    date: item.date || '' 
                 };
                 setShoppingList([...shoppingList, newItem]);
                 showToast("已加入購物車清單！");
@@ -529,6 +533,12 @@
                                     <input type="text" placeholder="網址" className="w-full p-2 border rounded-lg text-sm bg-white outline-none min-w-0" value={buyForm.url} onChange={e => setBuyForm({...buyForm, url: e.target.value})} />
                                 </div>
                             </div>
+                            
+                            {/* 💡 4. 新增的日期輸入欄位 */}
+                            <div className="flex flex-col gap-1 w-full min-w-0 mb-3">
+                                <label className="text-xs font-bold text-gray-700">預定購買日期 (選填)</label>
+                                <input type="date" className="w-full p-2 border rounded-lg text-sm bg-white outline-none min-w-0 text-gray-600" value={buyForm.date || ''} onChange={e => setBuyForm({...buyForm, date: e.target.value})} />
+                            </div>
 
                             <div className="mb-3 w-full min-w-0">
                                 <label className="block text-xs font-bold mb-1">上傳商品截圖</label>
@@ -568,8 +578,12 @@
                                     <div>
                                         {item.image ? <img src={item.image} className="w-full h-32 object-cover" alt="" /> : <div className="w-full h-24 bg-gray-100 flex items-center justify-center text-gray-400"><i className="fa-solid fa-bag-shopping text-2xl"></i></div>}
                                         <div className="p-3">
-                                            <div className="flex gap-1 flex-wrap"><span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-500 text-white">{item.store || '不限店家'}</span>
-                                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-500 text-white">{item.type || '未分類'}</span></div>
+                                            {/* 💡 5. 在標籤區塊加上日期的顯示 (若有設定的話) */}
+                                            <div className="flex gap-1 flex-wrap">
+                                                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-500 text-white">{item.store || '不限店家'}</span>
+                                                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-500 text-white">{item.type || '未分類'}</span>
+                                                {item.date && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-teal-500 text-white shadow-sm"><i className="fa-regular fa-calendar mr-1"></i>{item.date}</span>}
+                                            </div>
                                             <h4 className="font-bold text-sm mt-1.5 text-gray-800 line-clamp-2">{item.notes}</h4>
                                             {item.cost && <p className="text-xs text-orange-600 font-bold mt-1">{item.currency || currency.code} {item.cost}</p>}
                                         </div>
