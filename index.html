@@ -322,11 +322,11 @@
             };
 
             return (
-                <div className="pb-24 w-full flex flex-col items-center">
+                <div className="p-4 pb-24 w-full flex flex-col items-center space-y-5">
                     
                     {/* 區塊 1: 目的地設定 */}
-                    <div className="p-4 space-y-6 w-full max-w-[480px]">
-                        <div className="bg-gradient-to-br from-blue-400 to-indigo-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden mt-2">
+                    <div className="w-full max-w-[380px] space-y-4">
+                        <div className="bg-gradient-to-br from-blue-400 to-indigo-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
                             <i className="fa-solid fa-plane-departure absolute -right-6 -bottom-6 opacity-20 text-[100px]"></i>
                             <h2 className="text-xl font-bold mb-2 flex items-center gap-2"><i className="fa-solid fa-earth-americas text-[22px]"></i> 本次旅程</h2>
                             <div className="mt-4 grid grid-cols-2 gap-2">
@@ -346,7 +346,7 @@
                                 )}
                             </div>
                         </div>
-                        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                             <h3 className="font-bold mb-4 flex items-center gap-2" style={{ color: COLORS.darkText }}>
                                 <i className="fa-solid fa-location-dot text-[18px]" style={{color: COLORS.mediumBlue}}></i> 設定目的地
                             </h3>
@@ -359,97 +359,95 @@
                     </div>
 
                     {/* 區塊 2: 航班資訊 */}
-                    <div className="px-4 w-full flex flex-col items-center">
-                        <div className="w-full max-w-[380px] relative">
-                            {!isEditing ? (
-                                <div className="flex flex-col gap-3 animate-slide w-full">
-                                    {renderDisplayCard('outbound')}
-                                    {renderDisplayCard('return')}
-                                </div>
-                            ) : (
-                                <div className="bg-white rounded-xl shadow-md p-4 border-t-4 border-[#8EB1D1] animate-slide mt-2 w-full">
-                                    <h2 className="text-sm font-bold flex items-center gap-1.5 text-slate-700 mb-3">
-                                        <i className="fa-solid fa-gear w-4 h-4 text-[#8EB1D1]"></i> 編輯行程細節
-                                    </h2>
+                    <div className="w-full max-w-[380px] relative">
+                        {!isEditing ? (
+                            <div className="flex flex-col gap-4 animate-slide w-full">
+                                {renderDisplayCard('outbound')}
+                                {renderDisplayCard('return')}
+                            </div>
+                        ) : (
+                            <div className="bg-white rounded-2xl shadow-md p-4 border-t-4 border-[#8EB1D1] animate-slide w-full">
+                                <h2 className="text-sm font-bold flex items-center gap-1.5 text-slate-700 mb-3">
+                                    <i className="fa-solid fa-gear w-4 h-4 text-[#8EB1D1]"></i> 編輯行程細節
+                                </h2>
 
-                                    <div className="flex bg-[#E8ECEF] p-1 rounded-lg mb-4">
-                                        <button type="button" onClick={() => setEditTab('outbound')} className={`flex-1 text-xs font-bold py-1.5 rounded-md transition-all ${editTab === 'outbound' ? 'bg-white text-[#8EB1D1] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>🛫 去程</button>
-                                        <button type="button" onClick={() => setEditTab('return')} className={`flex-1 text-xs font-bold py-1.5 rounded-md transition-all ${editTab === 'return' ? 'bg-white text-[#8EB1D1] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>🛬 回程</button>
+                                <div className="flex bg-[#E8ECEF] p-1 rounded-lg mb-4">
+                                    <button type="button" onClick={() => setEditTab('outbound')} className={`flex-1 text-xs font-bold py-1.5 rounded-md transition-all ${editTab === 'outbound' ? 'bg-white text-[#8EB1D1] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>🛫 去程</button>
+                                    <button type="button" onClick={() => setEditTab('return')} className={`flex-1 text-xs font-bold py-1.5 rounded-md transition-all ${editTab === 'return' ? 'bg-white text-[#8EB1D1] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>🛬 回程</button>
+                                </div>
+
+                                <datalist id="airports-db">
+                                    {GLOBAL_AIRPORTS.map(ap => <option key={ap} value={ap} />)}
+                                </datalist>
+
+                                <form onSubmit={handleSaveFlight} className="space-y-3">
+                                    <div className="flex gap-2">
+                                        <div className="flex-1">
+                                            <label className="text-[10px] font-bold text-slate-400">航班號碼</label>
+                                            <input type="text" className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold uppercase outline-none focus:ring-1 focus:ring-[#8EB1D1]" value={formData[editTab]?.flightNumber || ''} onChange={(e) => setFormData({...formData, [editTab]: {...formData[editTab], flightNumber: e.target.value}})} />
+                                        </div>
+                                        <div className="flex-[1.5]">
+                                            <label className="text-[10px] font-bold text-slate-400">航空公司</label>
+                                            <select className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1]" value={formData[editTab]?.airline || ''} onChange={(e) => setFormData({...formData, [editTab]: {...formData[editTab], airline: e.target.value}})}>
+                                                <option value="">請選擇</option>
+                                                {Object.keys(AIRLINE_DB).map(name => <option key={name} value={name}>{name}</option>)}
+                                            </select>
+                                        </div>
                                     </div>
 
-                                    <datalist id="airports-db">
-                                        {GLOBAL_AIRPORTS.map(ap => <option key={ap} value={ap} />)}
-                                    </datalist>
-
-                                    <form onSubmit={handleSaveFlight} className="space-y-3">
-                                        <div className="flex gap-2">
-                                            <div className="flex-1">
-                                                <label className="text-[10px] font-bold text-slate-400">航班號碼</label>
-                                                <input type="text" className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold uppercase outline-none focus:ring-1 focus:ring-[#8EB1D1]" value={formData[editTab]?.flightNumber || ''} onChange={(e) => setFormData({...formData, [editTab]: {...formData[editTab], flightNumber: e.target.value}})} />
-                                            </div>
-                                            <div className="flex-[1.5]">
-                                                <label className="text-[10px] font-bold text-slate-400">航空公司</label>
-                                                <select className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1]" value={formData[editTab]?.airline || ''} onChange={(e) => setFormData({...formData, [editTab]: {...formData[editTab], airline: e.target.value}})}>
-                                                    <option value="">請選擇</option>
-                                                    {Object.keys(AIRLINE_DB).map(name => <option key={name} value={name}>{name}</option>)}
-                                                </select>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400">出發地</label>
+                                            <div className="relative">
+                                                <input type="text" list="airports-db" className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1] pr-7" placeholder="例如: TPE" value={formData[editTab]?.departureCode || ''} onChange={(e) => setFormData({...formData, [editTab]: {...formData[editTab], departureCode: e.target.value}})} />
+                                                <i className="fa-solid fa-circle-xmark clear-btn absolute right-1.5 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center text-slate-400 hover:text-red-500 cursor-pointer" onClick={() => setFormData({...formData, [editTab]: {...formData[editTab], departureCode: ''}})}></i>
                                             </div>
                                         </div>
-
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div>
-                                                <label className="text-[10px] font-bold text-slate-400">出發地</label>
-                                                <div className="relative">
-                                                    <input type="text" list="airports-db" className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1] pr-7" placeholder="例如: TPE" value={formData[editTab]?.departureCode || ''} onChange={(e) => setFormData({...formData, [editTab]: {...formData[editTab], departureCode: e.target.value}})} />
-                                                    <i className="fa-solid fa-circle-xmark clear-btn absolute right-1.5 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center text-slate-400 hover:text-red-500 cursor-pointer" onClick={() => setFormData({...formData, [editTab]: {...formData[editTab], departureCode: ''}})}></i>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] font-bold text-slate-400">目的地</label>
-                                                <div className="relative">
-                                                    <input type="text" list="airports-db" className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1] pr-7" placeholder="例如: NRT" value={formData[editTab]?.arrivalCode || ''} onChange={(e) => setFormData({...formData, [editTab]: {...formData[editTab], arrivalCode: e.target.value}})} />
-                                                    <i className="fa-solid fa-circle-xmark clear-btn absolute right-1.5 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center text-slate-400 hover:text-red-500 cursor-pointer" onClick={() => setFormData({...formData, [editTab]: {...formData[editTab], arrivalCode: ''}})}></i>
-                                                </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400">目的地</label>
+                                            <div className="relative">
+                                                <input type="text" list="airports-db" className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1] pr-7" placeholder="例如: NRT" value={formData[editTab]?.arrivalCode || ''} onChange={(e) => setFormData({...formData, [editTab]: {...formData[editTab], arrivalCode: e.target.value}})} />
+                                                <i className="fa-solid fa-circle-xmark clear-btn absolute right-1.5 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center text-slate-400 hover:text-red-500 cursor-pointer" onClick={() => setFormData({...formData, [editTab]: {...formData[editTab], arrivalCode: ''}})}></i>
                                             </div>
                                         </div>
+                                    </div>
 
-                                        <div className="grid grid-cols-2 gap-6 pt-1">
-                                            <div>
-                                                <label className="text-[10px] font-bold text-slate-400 block mb-1">出發時間</label>
-                                                <input type="datetime-local" className="w-full bg-[#E8ECEF] rounded p-2 text-[10px] font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1]" value={formData[editTab]?.departureTime || ''} onChange={(e) => setFormData({...formData, [editTab]: {...formData[editTab], departureTime: e.target.value}})} />
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] font-bold text-slate-400 block mb-1">到達時間</label>
-                                                <input type="datetime-local" className="w-full bg-[#E8ECEF] rounded p-2 text-[10px] font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1]" value={formData[editTab]?.arrivalTime || ''} onChange={(e) => setFormData({...formData, [editTab]: {...formData[editTab], arrivalTime: e.target.value}})} />
-                                            </div>
+                                    <div className="grid grid-cols-2 gap-6 pt-1">
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 block mb-1">出發時間</label>
+                                            <input type="datetime-local" className="w-full bg-[#E8ECEF] rounded p-2 text-[10px] font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1]" value={formData[editTab]?.departureTime || ''} onChange={(e) => setFormData({...formData, [editTab]: {...formData[editTab], departureTime: e.target.value}})} />
                                         </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 block mb-1">到達時間</label>
+                                            <input type="datetime-local" className="w-full bg-[#E8ECEF] rounded p-2 text-[10px] font-bold outline-none focus:ring-1 focus:ring-[#8EB1D1]" value={formData[editTab]?.arrivalTime || ''} onChange={(e) => setFormData({...formData, [editTab]: {...formData[editTab], arrivalTime: e.target.value}})} />
+                                        </div>
+                                    </div>
 
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div>
-                                                <label className="text-[10px] font-bold text-slate-400 block mb-1">起飛航廈</label>
-                                                <input type="text" className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold uppercase outline-none focus:ring-1 focus:ring-[#8EB1D1]" value={formData[editTab]?.departureTerminal || ''} onChange={(e) => setFormData({...formData, [editTab]: {...formData[editTab], departureTerminal: e.target.value}})} />
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] font-bold text-slate-400 block mb-1">降落航廈</label>
-                                                <input type="text" className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold uppercase outline-none focus:ring-1 focus:ring-[#8EB1D1]" value={formData[editTab]?.arrivalTerminal || ''} onChange={(e) => setFormData({...formData, [editTab]: {...formData[editTab], arrivalTerminal: e.target.value}})} />
-                                            </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 block mb-1">起飛航廈</label>
+                                            <input type="text" className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold uppercase outline-none focus:ring-1 focus:ring-[#8EB1D1]" value={formData[editTab]?.departureTerminal || ''} onChange={(e) => setFormData({...formData, [editTab]: {...formData[editTab], departureTerminal: e.target.value}})} />
                                         </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 block mb-1">降落航廈</label>
+                                            <input type="text" className="w-full bg-[#E8ECEF] rounded p-2 text-xs font-bold uppercase outline-none focus:ring-1 focus:ring-[#8EB1D1]" value={formData[editTab]?.arrivalTerminal || ''} onChange={(e) => setFormData({...formData, [editTab]: {...formData[editTab], arrivalTerminal: e.target.value}})} />
+                                        </div>
+                                    </div>
 
-                                        <div className="flex gap-2 pt-3 border-t border-slate-100 mt-2">
-                                            <button type="button" onClick={() => setIsEditing(false)} className="flex-1 bg-slate-100 text-slate-500 font-bold py-2 rounded-lg text-[11px]">取消</button>
-                                            <button type="submit" className="flex-[2] bg-[#8EB1D1] text-white font-bold py-2 rounded-lg text-[11px] shadow-sm flex justify-center items-center gap-1">
-                                                <i className="fa-solid fa-floppy-disk w-3.5 h-3.5"></i> 儲存設定
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            )}
-                        </div>
+                                    <div className="flex gap-2 pt-3 border-t border-slate-100 mt-2">
+                                        <button type="button" onClick={() => setIsEditing(false)} className="flex-1 bg-slate-100 text-slate-500 font-bold py-2 rounded-lg text-[11px]">取消</button>
+                                        <button type="submit" className="flex-[2] bg-[#8EB1D1] text-white font-bold py-2 rounded-lg text-[11px] shadow-sm flex justify-center items-center gap-1">
+                                            <i className="fa-solid fa-floppy-disk w-3.5 h-3.5"></i> 儲存設定
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        )}
                     </div>
 
                     {/* 區塊 3: 分享旅遊資訊 */}
-                    <div className="p-4 pt-6 w-full flex flex-col items-center">
-                        <div className="bg-white p-5 rounded-2xl border shadow-sm w-full max-w-[380px]">
+                    <div className="w-full max-w-[380px]">
+                        <div className="bg-white p-5 rounded-2xl border shadow-sm w-full">
                             <h3 className="font-bold text-sm mb-2 flex items-center gap-2" style={{ color: COLORS.darkText }}>
                                 <i className="fa-solid fa-share-nodes" style={{ color: '#8BA3C5' }}></i> 分享旅遊資訊
                             </h3>
@@ -998,6 +996,10 @@
         };
 
         const RenderSplitBill = ({ splitMembers, setSplitMembers, splitExpenses, setSplitExpenses, currency, exchangeRate, showToast }) => {
+            // 💡 新增：控制分帳模式的 State ('AA' 或 'CUSTOM')
+            const [splitType, setSplitType] = useState('AA');
+            const [customAmounts, setCustomAmounts] = useState({});
+
             const [editingExpenseId, setEditingExpenseId] = useState(null);
             const [newMember, setNewMember] = useState('');
             const [title, setTitle] = useState('');
@@ -1032,27 +1034,55 @@
             };
 
             const handleAddExpense = () => {
-                if (!title || !amount || isNaN(amount)) return;
+                if (!title) return showToast("請輸入消費項目！");
                 const finalRate = Number(customRate) || 1;
-                const twdAmount = selectedCurrency === 'TWD' ? Math.ceil(Number(amount)) : Math.ceil(Number(amount) / finalRate);
-                const involvedMembers = Object.keys(shares).filter(m => shares[m]);
-                if (involvedMembers.length === 0) { alert("請至少選擇一位幫忙分攤的成員！"); return; }
+                
+                let finalAmount = 0;
+                let finalTwdAmount = 0;
+                let involvedMembers = [];
+                let savedCustomAmounts = {};
+
+                if (splitType === 'AA') {
+                    if (!amount || isNaN(amount)) return showToast("請輸入消費金額！");
+                    finalAmount = Number(amount);
+                    finalTwdAmount = selectedCurrency === 'TWD' ? Math.ceil(finalAmount) : Math.ceil(finalAmount / finalRate);
+                    involvedMembers = Object.keys(shares).filter(m => shares[m]);
+                    if (involvedMembers.length === 0) return showToast("請至少選擇一位幫忙分攤的成員！");
+                } else {
+                    // CUSTOM 模式邏輯
+                    let sum = 0;
+                    let sumTwd = 0;
+                    Object.keys(customAmounts).forEach(m => {
+                        const val = Number(customAmounts[m]) || 0;
+                        if (val > 0) {
+                            involvedMembers.push(m);
+                            savedCustomAmounts[m] = val;
+                            sum += val;
+                            const m_twd = selectedCurrency === 'TWD' ? Math.ceil(val) : Math.ceil(val / finalRate);
+                            sumTwd += m_twd;
+                        }
+                    });
+                    if (involvedMembers.length === 0) return showToast("請至少為一位成員輸入金額！");
+                    finalAmount = sum;
+                    finalTwdAmount = sumTwd;
+                }
 
                 if (editingExpenseId) {
                     setSplitExpenses(splitExpenses.map(exp => exp.id === editingExpenseId ? {
-                        ...exp, title, amount: Number(amount), date: expenseDate, currencyCode: selectedCurrency, rate: finalRate, twdAmount, paidBy, mInvolved: involvedMembers
+                        ...exp, title, amount: finalAmount, date: expenseDate, currencyCode: selectedCurrency, rate: finalRate, twdAmount: finalTwdAmount, paidBy, mInvolved: involvedMembers, splitType, customAmounts: savedCustomAmounts
                     } : exp));
                     setEditingExpenseId(null);
                     showToast("記帳項目修改成功！");
                 } else {
                     setSplitExpenses([...splitExpenses, {
-                        id: Date.now(), title, amount: Number(amount), date: expenseDate, currencyCode: selectedCurrency, rate: finalRate, twdAmount, paidBy, mInvolved: involvedMembers
+                        id: Date.now(), title, amount: finalAmount, date: expenseDate, currencyCode: selectedCurrency, rate: finalRate, twdAmount: finalTwdAmount, paidBy, mInvolved: involvedMembers, splitType, customAmounts: savedCustomAmounts
                     }]);
-                    showToast("成功記錄一筆手動花費！");
+                    showToast("成功記錄一筆記帳！");
                 }
 
                 setTitle(''); setAmount(''); setExpenseDate('');
                 const resetShares = {}; splitMembers.forEach(m => { resetShares[m] = true; }); setShares(resetShares);
+                setSplitType('AA'); setCustomAmounts({});
                 setIsCustomRate(false);
             };
 
@@ -1066,11 +1096,19 @@
                 setCustomRate(exp.rate.toString());
                 setIsCustomRate(true);
                 
-                const editShares = {};
-                splitMembers.forEach(m => {
-                    editShares[m] = exp.mInvolved.includes(m);
-                });
-                setShares(editShares);
+                // 💡 讀取舊資料的模式與金額
+                const mode = exp.splitType || 'AA';
+                setSplitType(mode);
+                if (mode === 'CUSTOM') {
+                    setCustomAmounts(exp.customAmounts || {});
+                } else {
+                    setCustomAmounts({});
+                    const editShares = {};
+                    splitMembers.forEach(m => {
+                        editShares[m] = exp.mInvolved.includes(m);
+                    });
+                    setShares(editShares);
+                }
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             };
 
@@ -1078,6 +1116,7 @@
                 setEditingExpenseId(null);
                 setTitle(''); setAmount(''); setExpenseDate('');
                 const resetShares = {}; splitMembers.forEach(m => { resetShares[m] = true; }); setShares(resetShares);
+                setSplitType('AA'); setCustomAmounts({});
                 setIsCustomRate(false);
             };
 
@@ -1089,8 +1128,21 @@
                 splitExpenses.forEach(exp => {
                     totalTwd += exp.twdAmount;
                     balances[exp.paidBy] += exp.twdAmount;
-                    const perShare = exp.twdAmount / exp.mInvolved.length;
-                    exp.mInvolved.forEach(m => { balances[m] -= perShare; });
+                    
+                    // 💡 新增：依據模式計算扣款
+                    if (exp.splitType === 'CUSTOM') {
+                        Object.keys(exp.customAmounts).forEach(m => {
+                            const val = exp.customAmounts[m];
+                            const m_twd = exp.currencyCode === 'TWD' ? Math.ceil(val) : Math.ceil(val / exp.rate);
+                            if (balances[m] !== undefined) balances[m] -= m_twd;
+                        });
+                    } else {
+                        // 原本的 AA 均分邏輯
+                        const perShare = exp.twdAmount / exp.mInvolved.length;
+                        exp.mInvolved.forEach(m => { 
+                            if (balances[m] !== undefined) balances[m] -= perShare; 
+                        });
+                    }
                 });
 
                 const averagePerPerson = splitMembers.length > 0 ? Math.ceil(totalTwd / splitMembers.length) : 0;
@@ -1144,8 +1196,15 @@
                     <div className="bg-white p-4 rounded-xl border shadow-sm">
                         <h3 className="font-bold text-sm mb-3 flex items-center gap-1.5">
                             <i className="fa-solid fa-file-invoice-dollar text-indigo-500"></i> 
-                            {editingExpenseId ? '編輯手動記帳項目' : '手動分帳記帳'}
+                            {editingExpenseId ? '編輯手動記帳項目' : '手動分帳'}
                         </h3>
+
+                        {/* 💡 新增：分帳模式切換按鈕 */}
+                        <div className="flex bg-[#E8ECEF] p-1 rounded-lg mb-4">
+                            <button type="button" onClick={() => setSplitType('AA')} className={`flex-1 text-xs font-bold py-1.5 rounded-md transition-all ${splitType === 'AA' ? 'bg-white text-indigo-500 shadow-sm' : 'text-slate-500'}`}>🤝 AA 均分</button>
+                            <button type="button" onClick={() => setSplitType('CUSTOM')} className={`flex-1 text-xs font-bold py-1.5 rounded-md transition-all ${splitType === 'CUSTOM' ? 'bg-white text-indigo-500 shadow-sm' : 'text-slate-500'}`}>🛒 個別輸入 (代購/各付各)</button>
+                        </div>
+
                         <div className="grid grid-cols-3 gap-2 mb-2">
                             <input type="text" placeholder="消費項目內容..." className="col-span-2 p-2 border rounded-lg text-sm" value={title} onChange={e => setTitle(e.target.value)} />
                             <select className="p-2 border rounded-lg bg-white text-sm" value={selectedCurrency} onChange={e => setSelectedCurrency(e.target.value)}>
@@ -1154,9 +1213,14 @@
                         </div>
                         
                         <div className="grid grid-cols-2 gap-2 mb-2">
-                            <input type="number" placeholder="消費金額..." className="p-2 border rounded-lg text-sm" value={amount} onChange={e => setAmount(e.target.value)} />
+                            {splitType === 'AA' ? (
+                                <input type="number" placeholder="消費金額..." className="p-2 border rounded-lg text-sm" value={amount} onChange={e => setAmount(e.target.value)} />
+                            ) : (
+                                <input type="text" placeholder="總金額將自動計算" className="p-2 border rounded-lg text-sm bg-gray-100 text-gray-400" disabled value="自動加總" />
+                            )}
                             <input type="date" className="p-2 border rounded-lg text-sm bg-white text-gray-600" value={expenseDate} onChange={e => setExpenseDate(e.target.value)} />
                         </div>
+
                         <div className="flex items-center gap-2 mb-2">
                             <span className="text-xs text-gray-500 font-bold whitespace-nowrap">付款人:</span>
                             <select className="w-full p-2 border rounded-lg bg-white text-sm" value={paidBy} onChange={e => setPaidBy(e.target.value)}>
@@ -1172,17 +1236,32 @@
                             <input type="number" step="0.0001" className="w-full p-1.5 border rounded bg-white text-xs" value={customRate} onChange={e => setCustomRate(e.target.value)} disabled={!isCustomRate} />
                         </div>
 
-                        <div className="mb-4">
-                            <span className="text-xs font-bold block mb-1.5 text-gray-600">誰要分攤 (可複選):</span>
-                            <div className="flex flex-wrap gap-3 p-2 rounded-lg bg-gray-50 border">
-                                {splitMembers.map(m => (
-                                    <label key={m} className="flex items-center gap-1.5 text-xs font-medium cursor-pointer text-gray-700">
-                                        <input type="checkbox" checked={!!shares[m]} onChange={e => setShares({...shares, [m]: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-0 border-gray-300" />
-                                        {m}
-                                    </label>
-                                ))}
+                        {/* 💡 條件渲染：依據模式顯示不同的分攤設定UI */}
+                        {splitType === 'AA' ? (
+                            <div className="mb-4">
+                                <span className="text-xs font-bold block mb-1.5 text-gray-600">誰要分攤 (可複選):</span>
+                                <div className="flex flex-wrap gap-3 p-2 rounded-lg bg-gray-50 border">
+                                    {splitMembers.map(m => (
+                                        <label key={m} className="flex items-center gap-1.5 text-xs font-medium cursor-pointer text-gray-700">
+                                            <input type="checkbox" checked={!!shares[m]} onChange={e => setShares({...shares, [m]: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-0 border-gray-300" />
+                                            {m}
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
+                        ) : (
+                            <div className="mb-4">
+                                <span className="text-xs font-bold block mb-1.5 text-gray-600">輸入各別購買金額 ({selectedCurrency}):</span>
+                                <div className="space-y-2 p-2 rounded-lg bg-gray-50 border">
+                                    {splitMembers.map(m => (
+                                        <div key={m} className="flex items-center gap-2">
+                                            <span className="w-16 text-xs font-bold text-gray-700 truncate">{m}</span>
+                                            <input type="number" className="flex-1 p-1.5 border rounded text-xs bg-white" placeholder="0" value={customAmounts[m] || ''} onChange={e => setCustomAmounts({...customAmounts, [m]: e.target.value})} />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         <div className="flex gap-2">
                             <button onClick={handleAddExpense} className="flex-1 py-2 rounded-lg text-white font-bold text-sm shadow-sm transition-all" style={{ backgroundColor: COLORS.mediumBlue }}>
@@ -1220,7 +1299,10 @@
                                         {exp.date && <span className="mr-2 text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded"><i className="fa-regular fa-calendar"></i> {exp.date}</span>}
                                         付款人: <strong className="text-slate-700">{exp.paidBy}</strong> ｜ 原幣別: {exp.amount} ({exp.currencyCode})
                                     </p>
-                                    <p className="text-[11px] text-gray-400 mt-0.5">分攤對象: {exp.mInvolved.join(', ')}</p>
+                                    {/* 💡 顯示此筆帳單的模式 */}
+                                    <p className="text-[11px] text-gray-400 mt-0.5">
+                                        {exp.splitType === 'CUSTOM' ? `個別輸入 (${exp.mInvolved.length} 人)` : `均分對象: ${exp.mInvolved.join(', ')}`}
+                                    </p>
                                 </div>
                                 <div className="text-right flex items-center gap-3">
                                     <div>
@@ -1395,7 +1477,7 @@
         // 主程式 App
         // ==========================================
         const App = () => {
-            const [activeTab, setActiveTab] = useState('flight'); // 預設 My Journey (結合了航班與目的地)
+            const [activeTab, setActiveTab] = useState('flight'); 
             const [toastMessage, setToastMessage] = useState('');
             const [isDrawerOpen, setIsDrawerOpen] = useState(false);
             const showToast = (message) => { setToastMessage(message); setTimeout(() => setToastMessage(''), 2500); };
@@ -1570,7 +1652,6 @@
                 showToast('✅ 所有資料已清空，回復至初始設定！');
             };
 
-            // 💡 移除原本的「目的地設定」，將它與航班整併成「My Journey」
             const menuItems = [
                 { id: 'flight', label: 'My Journey', icon: 'fa-plane' },
                 { id: 'list', label: '我的行程表', icon: 'fa-route' },
@@ -1629,7 +1710,6 @@
                     </header>
 
                     <main className="content-area no-scrollbar">
-                        {/* 💡 整合後的 My Journey */}
                         {activeTab === 'flight' && (
                             <RenderMyJourney 
                                 currentTrip={currentTrip} setCurrentTrip={setCurrentTrip} 
@@ -1646,7 +1726,6 @@
                         {activeTab === 'shop' && <RenderShoppingList shoppingList={shoppingList} setShoppingList={setShoppingList} currency={currency} exchangeRate={exchangeRate} showToast={showToast} handleCurrencyChange={handleCurrencyChange} />}
                         {activeTab === 'bill' && <RenderSplitBill splitMembers={splitMembers} setSplitMembers={setSplitMembers} splitExpenses={splitExpenses} setSplitExpenses={setSplitExpenses} currency={currency} exchangeRate={exchangeRate} showToast={showToast} />}
                         {activeTab === 'prep' && <RenderChecklist prepList={prepList} setPrepList={setPrepList} />}
-                        {/* 💡 小工具裡已經移除了分享功能，保留了匯率與備份 */}
                         {activeTab === 'tools' && <RenderTools currency={currency} exchangeRate={exchangeRate} showToast={showToast} handleExportData={handleExportData} handleImportData={handleImportData} handleResetData={handleResetData} />}
                     </main>
 
