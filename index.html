@@ -275,6 +275,7 @@
                 );
             };
 
+            // --- 分享邏輯 ---
             const copyToClipboard = (text) => {
                 navigator.clipboard.writeText(text).then(() => {
                     showToast("✅ 行程與清單已複製到剪貼簿！");
@@ -469,7 +470,7 @@
                             <h3 className="font-bold text-sm mb-2 flex items-center gap-2" style={{ color: COLORS.darkText }}>
                                 <i className="fa-solid fa-share-nodes" style={{ color: '#8BA3C5' }}></i> 分享旅遊資訊
                             </h3>
-                            <p className="text-[11px] text-gray-400 mb-4 font-medium">將目前的行程安排格式化後分享給旅伴。</p>
+                            <p className="text-[11px] text-gray-400 mb-4 font-medium">將目前行程格式化後分享給旅伴。</p>
                             <button onClick={handleShareData} className="w-full py-3 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95" style={{ backgroundColor: '#23354D' }}>
                                 <i className="fa-solid fa-copy"></i> 複製行程
                             </button>
@@ -953,7 +954,7 @@
                             <div className="flex items-center gap-2">
                                 <label className="flex-1 flex items-center justify-center gap-2 p-2 border-2 border-dashed rounded-lg text-xs font-bold text-gray-400 cursor-pointer hover:bg-gray-50">
                                     <i className="fa-solid fa-camera"></i> {itemImage ? '更換圖片' : '上傳商品圖片'}
-                                    <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                                    <input type="file" accept="image/*" className="hidden" />
                                 </label>
                                 {itemImage && (
                                     <div className="relative">
@@ -1093,12 +1094,12 @@
                     setSplitExpenses([...splitExpenses, {
                         id: Date.now(), title, amount: finalAmount, date: expenseDate, currencyCode: selectedCurrency, rate: finalRate, twdAmount: finalTwdAmount, paidBy, mInvolved: involvedMembers, splitType, customAmounts: savedCustomAmounts
                     }]);
-                    showToast("成功記錄一筆手動花費！");
+                    showToast("成功記錄一筆記帳！");
                 }
 
                 setTitle(''); setAmount(''); setExpenseDate('');
                 const resetShares = {}; splitMembers.forEach(m => { resetShares[m] = true; }); setShares(resetShares);
-                setSplitType('AA'); setCustomAmounts({});
+                setCustomAmounts({});
                 setIsCustomRate(false);
             };
 
@@ -1131,52 +1132,59 @@
                 setEditingExpenseId(null);
                 setTitle(''); setAmount(''); setExpenseDate('');
                 const resetShares = {}; splitMembers.forEach(m => { resetShares[m] = true; }); setShares(resetShares);
-                setSplitType('AA'); setCustomAmounts({});
+                setCustomAmounts({});
                 setIsCustomRate(false);
             };
 
+            // 💡 1. 核心邏輯：將帳單資料根據目前的 splitType 進行過濾
+            const filteredExpenses = useMemo(() => {
+                return splitExpenses.filter(exp => {
+                    const mode = exp.splitType || 'AA';
+                    return mode === splitType;
+                });
+            }, [splitExpenses, splitType]);
+
+            // 💡 2. 計算邏輯：只針對目前過濾後的帳單進行計算
             const splitResults = useMemo(() => {
-                const balances = {};
                 let totalTwd = 0;
-                splitMembers.forEach(m => { balances[m] = 0; });
-                
-                splitExpenses.forEach(exp => {
+                const itemizedDebts = [];
+
+                filteredExpenses.forEach(exp => {
                     totalTwd += exp.twdAmount;
-                    balances[exp.paidBy] += exp.twdAmount;
-                    
+                    const currentItemDebts = [];
+
                     if (exp.splitType === 'CUSTOM') {
                         Object.keys(exp.customAmounts || {}).forEach(m => {
-                            const val = exp.customAmounts[m];
-                            const m_twd = exp.currencyCode === 'TWD' ? Math.ceil(val) : Math.ceil(val / exp.rate);
-                            if (balances[m] !== undefined) balances[m] -= m_twd;
+                            const val = Number(exp.customAmounts[m]);
+                            if (val > 0) {
+                                const m_twd = exp.currencyCode === 'TWD' ? Math.ceil(val) : Math.ceil(val / exp.rate);
+                                if (m !== exp.paidBy && m_twd > 0) {
+                                    currentItemDebts.push({ from: m, to: exp.paidBy, amount: m_twd });
+                                }
+                            }
                         });
                     } else {
                         const perShare = exp.twdAmount / exp.mInvolved.length;
                         exp.mInvolved.forEach(m => { 
-                            if (balances[m] !== undefined) balances[m] -= perShare; 
+                            if (m !== exp.paidBy && perShare > 0) {
+                                currentItemDebts.push({ from: m, to: exp.paidBy, amount: Math.ceil(perShare) });
+                            }
+                        });
+                    }
+
+                    if (currentItemDebts.length > 0) {
+                        itemizedDebts.push({
+                            title: exp.title,
+                            date: exp.date,
+                            debts: currentItemDebts
                         });
                     }
                 });
 
                 const averagePerPerson = splitMembers.length > 0 ? Math.ceil(totalTwd / splitMembers.length) : 0;
 
-                const creditors = []; const debtors = [];
-                Object.keys(balances).forEach(m => {
-                    if (balances[m] > 0.1) creditors.push({ name: m, amt: balances[m] });
-                    else if (balances[m] < -0.1) debtors.push({ name: m, amt: Math.abs(balances[m]) });
-                });
-
-                const payments = []; let cIdx = 0; let dIdx = 0;
-                while (cIdx < creditors.length && dIdx < debtors.length) {
-                    const c = creditors[cIdx]; const d = debtors[dIdx];
-                    const transfer = Math.min(c.amt, d.amt);
-                    payments.push({ from: d.name, to: c.name, amount: Math.ceil(transfer) });
-                    c.amt -= transfer; d.amt -= transfer;
-                    if (c.amt <= 0.1) cIdx++; if (d.amt <= 0.1) dIdx++;
-                }
-
-                return { totalTwd, averagePerPerson, payments };
-            }, [splitExpenses, splitMembers]);
+                return { totalTwd, averagePerPerson, itemizedDebts };
+            }, [filteredExpenses, splitMembers]);
 
             return (
                 <div className="p-4 pb-24 space-y-4">
@@ -1285,23 +1293,47 @@
                         </div>
                     </div>
 
-                    {splitResults.payments.length > 0 && (
-                        <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl shadow-sm">
-                            <h3 className="font-bold text-emerald-800 text-sm mb-2 flex items-center gap-1.5"><i className="fa-solid fa-comments-dollar"></i> 清算最佳化建議路徑</h3>
-                            <div className="space-y-1">
-                                {splitResults.payments.map((p, idx) => (
-                                    <div key={idx} className="text-xs text-emerald-900 font-medium bg-white/60 p-2 rounded-md flex justify-between">
-                                        <span>👉 <strong>{p.from}</strong> 應支付給 <strong>{p.to}</strong></span>
-                                        <span className="font-bold text-orange-600">NT$ {p.amount.toLocaleString()}</span>
-                                    </div>
-                                ))}
-                            </div>
+                    {/* 💡 3. 只顯示目前過濾後的最終分帳明細 */}
+                    {filteredExpenses.length > 0 && (
+                        <div className={`border p-4 rounded-xl shadow-sm ${splitType === 'AA' ? 'bg-emerald-50 border-emerald-200' : 'bg-indigo-50 border-indigo-200'}`}>
+                            <h3 className={`font-bold text-sm mb-3 flex items-center gap-1.5 ${splitType === 'AA' ? 'text-emerald-800' : 'text-indigo-800'}`}>
+                                <i className="fa-solid fa-comments-dollar"></i> 最終分帳明細 ({splitType === 'AA' ? 'AA 均分' : '個別輸入'})
+                            </h3>
+                            {splitResults.itemizedDebts.length > 0 ? (
+                                <div className="space-y-3">
+                                    {splitResults.itemizedDebts.map((item, idx) => (
+                                        <div key={idx} className={`bg-white/80 p-3 rounded-lg border shadow-sm ${splitType === 'AA' ? 'border-emerald-100' : 'border-indigo-100'}`}>
+                                            <div className={`text-[11px] font-black mb-2 border-b pb-1.5 flex items-center flex-wrap gap-1.5 ${splitType === 'AA' ? 'text-emerald-900 border-emerald-200' : 'text-indigo-900 border-indigo-200'}`}>
+                                                <div className="flex items-center gap-1"><i className="fa-solid fa-receipt opacity-70"></i> {item.title}</div>
+                                                {item.date && (
+                                                    <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded shadow-sm ${splitType === 'AA' ? 'bg-emerald-100/80 text-emerald-700' : 'bg-indigo-100/80 text-indigo-700'}`}>
+                                                        <i className="fa-regular fa-calendar"></i> {item.date}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                {item.debts.map((d, dIdx) => (
+                                                    <div key={dIdx} className={`text-xs font-medium flex justify-between items-center ${splitType === 'AA' ? 'text-emerald-900' : 'text-indigo-900'}`}>
+                                                        <span>👉 <strong>{d.from}</strong> 應給 <strong>{d.to}</strong></span>
+                                                        <span className="font-bold opacity-90">NT$ {d.amount.toLocaleString()}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className={`text-xs font-bold bg-white/60 p-2 rounded-md text-center ${splitType === 'AA' ? 'text-emerald-700' : 'text-indigo-700'}`}>
+                                    🎉 目前無任何欠款產生！
+                                </div>
+                            )}
                         </div>
                     )}
 
+                    {/* 💡 4. 只顯示目前過濾後的歷史設定 */}
                     <div className="bg-white rounded-xl border shadow-sm divide-y">
                         <div className="p-3 bg-gray-50 rounded-t-xl"><span className="text-xs font-bold text-gray-600">已完成的手動記帳項目設定</span></div>
-                        {splitExpenses.map(exp => (
+                        {filteredExpenses.map(exp => (
                             <div key={exp.id} className="p-3.5 flex justify-between items-center gap-2">
                                 <div className="text-xs text-gray-600 flex-1">
                                     <p className="font-bold text-sm text-gray-800 mb-0.5">{exp.title}</p>
@@ -1317,9 +1349,11 @@
                                                 </span>
                                             ) : null)
                                         ) : (
-                                            <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded shadow-sm border border-slate-200 font-medium">
-                                                均分: {exp.mInvolved.join(', ')}
-                                            </span>
+                                            exp.mInvolved.map(m => (
+                                                <span key={m} className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded shadow-sm border border-indigo-100 font-medium">
+                                                    {m}: {exp.currencyCode === 'TWD' ? Math.ceil(exp.amount / exp.mInvolved.length) : Number((exp.amount / exp.mInvolved.length).toFixed(2))}
+                                                </span>
+                                            ))
                                         )}
                                     </div>
                                 </div>
@@ -1339,7 +1373,7 @@
                                 </div>
                             </div>
                         ))}
-                        {splitExpenses.length === 0 && <p className="text-center text-gray-500 py-10 text-xs">尚無任何記帳紀錄。</p>}
+                        {filteredExpenses.length === 0 && <p className="text-center text-gray-500 py-10 text-xs">尚無任何記帳紀錄。</p>}
                     </div>
                 </div>
             );
