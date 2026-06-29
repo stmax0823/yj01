@@ -13,6 +13,7 @@
     <script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 載入 Phosphor Icons (行前清單專屬使用) -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
      <style>
@@ -235,7 +236,7 @@
                 const logoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(airData.code)}&background=${airData.bg}&color=fff&rounded=true&bold=true`;
 
                 return (
-                    <div className="bg-white rounded-xl shadow-sm border border-[#C4D8E5] overflow-hidden">
+                    <div className="bg-white rounded-xl shadow-sm border border-[#C4D8E5] overflow-hidden w-full">
                         <div className="bg-[#8EB1D1] px-3 py-1.5 flex justify-between items-center text-white">
                             <div className="font-black tracking-widest text-[10px] flex items-center gap-1.5">
                                 <i className={`fa-solid ${isOutbound ? 'fa-plane-departure' : 'fa-plane-arrival'} w-3.5 h-3.5`}></i> 
@@ -274,7 +275,6 @@
                 );
             };
 
-            // --- 分享邏輯 ---
             const copyToClipboard = (text) => {
                 navigator.clipboard.writeText(text).then(() => {
                     showToast("✅ 行程與清單已複製到剪貼簿！");
@@ -282,15 +282,33 @@
             };
 
             const handleShareData = () => {
-                let shareText = `✈️ 【${currentTrip.country}·${currentTrip.city}】旅遊清單分享\n\n`;
+                let shareText = `✈️ 【${currentTrip.country || '未設定'} · ${currentTrip.city || '未設定'}】旅遊資訊分享\n\n`;
                 
+                const ob = flightInfo.outbound;
+                if (ob && (ob.flightNumber || ob.departureCode)) {
+                    shareText += `🛫 [去程 OUTBOUND]\n`;
+                    shareText += `航班：${ob.airline || '未設定'} ${ob.flightNumber || ''}\n`;
+                    shareText += `航線：${(ob.departureCode || '---').substring(0, 3).toUpperCase()} ➔ ${(ob.arrivalCode || '---').substring(0, 3).toUpperCase()}\n`;
+                    shareText += `時間：${formatTime(ob.departureTime) || '--'} ➔ ${formatTime(ob.arrivalTime) || '--'}\n\n`;
+                }
+
+                const ib = flightInfo.return;
+                if (ib && (ib.flightNumber || ib.departureCode)) {
+                    shareText += `🛬 [回程 INBOUND]\n`;
+                    shareText += `航班：${ib.airline || '未設定'} ${ib.flightNumber || ''}\n`;
+                    shareText += `航線：${(ib.departureCode || '---').substring(0, 3).toUpperCase()} ➔ ${(ib.arrivalCode || '---').substring(0, 3).toUpperCase()}\n`;
+                    shareText += `時間：${formatTime(ib.departureTime) || '--'} ➔ ${formatTime(ib.arrivalTime) || '--'}\n\n`;
+                }
+
                 if (itinerary.length > 0) {
                     shareText += `📅 行程總覽：\n`;
-                    const sortedDays = [...new Set(itinerary.map(i => i.day))].sort((a, b) => a - b);
-                    sortedDays.forEach(day => {
-                        shareText += `[第 ${day} 天]\n`;
-                        const dayItems = itinerary.filter(i => i.day === day).sort((a, b) => a.time.localeCompare(b.time));
-                        dayItems.forEach(item => {
+                    const groupedItin = itinerary.reduce((acc, curr) => {
+                        (acc[curr.day] = acc[curr.day] || []).push(curr);
+                        return acc;
+                    }, {});
+                    Object.keys(groupedItin).sort().forEach(day => {
+                        shareText += `[${day}]\n`;
+                        groupedItin[day].sort((a, b) => a.time.localeCompare(b.time)).forEach(item => {
                             shareText += `- ${item.time} ${item.title}${item.address ? ` (@${item.address})` : ''}\n`;
                         });
                     });
@@ -358,7 +376,7 @@
                         </div>
                     </div>
 
-                    {/* 區塊 2: 航班資訊 */}
+                    {/* 區塊 2: 航班資訊 (外框同為 380px) */}
                     <div className="w-full max-w-[380px] relative">
                         {!isEditing ? (
                             <div className="flex flex-col gap-4 animate-slide w-full">
@@ -445,15 +463,15 @@
                         )}
                     </div>
 
-                    {/* 區塊 3: 分享旅遊資訊 (外框同為 380px) */}
+                    {/* 區塊 3: 分享旅遊資訊 (外框同為 380px) 恢復為純文字複製 */}
                     <div className="w-full max-w-[380px]">
                         <div className="bg-white p-5 rounded-2xl border shadow-sm w-full">
                             <h3 className="font-bold text-sm mb-2 flex items-center gap-2" style={{ color: COLORS.darkText }}>
                                 <i className="fa-solid fa-share-nodes" style={{ color: '#8BA3C5' }}></i> 分享旅遊資訊
                             </h3>
-                            <p className="text-[11px] text-gray-400 mb-4 font-medium">將目前的行程安排與購物清單格式化後分享給旅伴。</p>
+                            <p className="text-[11px] text-gray-400 mb-4 font-medium">將目前的行程安排格式化後分享給旅伴。</p>
                             <button onClick={handleShareData} className="w-full py-3 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95" style={{ backgroundColor: '#23354D' }}>
-                                <i className="fa-solid fa-copy"></i> 複製行程與購物清單
+                                <i className="fa-solid fa-copy"></i> 複製行程
                             </button>
                         </div>
                     </div>
@@ -646,7 +664,7 @@
         }) => {
             const [showForm, setShowForm] = useState(false);
             const [editingMustGoId, setEditingMustGoId] = useState(null);
-            const [eatForm, setEatForm] = useState({ url: '', name: '', country: currentTrip.country, city: currentTrip.city, district: '', type: '', cost: '', currency: currency.code, image: '' });
+            const [eatForm, setEatForm] = useState({ url: '', name: '', type: '', cost: '', currency: currency.code, image: '' });
             const [buyForm, setBuyForm] = useState({ url: '', country: currentTrip.country, store: '', type: '', cost: '', notes: '', currency: currency.code, image: '', date: '' });
 
             const handleImageUpload = (e, formType) => {
@@ -668,7 +686,7 @@
                     setMustEats([...mustEats, { ...eatForm, id: Date.now() }]);
                     showToast("新增美食成功！");
                 }
-                setEatForm({ url: '', name: '', country: currentTrip.country, city: currentTrip.city, district: '', type: '', cost: '', currency: currency.code, image: '' });
+                setEatForm({ url: '', name: '', type: '', cost: '', currency: currency.code, image: '' });
                 setShowForm(false);
             };
 
@@ -1075,7 +1093,7 @@
                     setSplitExpenses([...splitExpenses, {
                         id: Date.now(), title, amount: finalAmount, date: expenseDate, currencyCode: selectedCurrency, rate: finalRate, twdAmount: finalTwdAmount, paidBy, mInvolved: involvedMembers, splitType, customAmounts: savedCustomAmounts
                     }]);
-                    showToast("成功記錄一筆記帳！");
+                    showToast("成功記錄一筆手動花費！");
                 }
 
                 setTitle(''); setAmount(''); setExpenseDate('');
@@ -1439,7 +1457,7 @@
             );
         };
 
-        const RenderTools = ({ currency, exchangeRate, showToast, handleExportData, handleImportData, handleResetData }) => {
+        const RenderTools = ({ currency, exchangeRate, handleExportData, handleImportData, handleResetData }) => {
             const [calcAmount1, setCalcAmount1] = useState('1000');
             const [calcAmount2, setCalcAmount2] = useState('');
             const [calcCurrency1, setCalcCurrency1] = useState(currency.code);
@@ -1584,9 +1602,6 @@
             );
         };
 
-        // ==========================================
-        // 主程式 App
-        // ==========================================
         const App = () => {
             const [activeTab, setActiveTab] = useState('flight'); 
             const [toastMessage, setToastMessage] = useState('');
@@ -1758,7 +1773,7 @@
                 setPrepList(DEFAULT_PREP_LIST);
                 setFoodTypes(INITIAL_FOOD_TYPES);
                 setItemTypes(INITIAL_ITEM_TYPES);
-                const EMPTY_FLIGHT = { code: '', airline: '', departureCode: '', arrivalCode: '', departureTime: '', arrivalTime: '', departureTerminal: '', arrivalTerminal: '' };
+                const EMPTY_FLIGHT = { flightNumber: '', airline: '', departureCode: '', arrivalCode: '', departureTime: '', arrivalTime: '', departureTerminal: '', arrivalTerminal: '' };
                 setFlightInfo({ outbound: { ...EMPTY_FLIGHT }, return: { ...EMPTY_FLIGHT } });
                 showToast('✅ 所有資料已清空，回復至初始設定！');
             };
@@ -1837,7 +1852,7 @@
                         {activeTab === 'shop' && <RenderShoppingList shoppingList={shoppingList} setShoppingList={setShoppingList} currency={currency} exchangeRate={exchangeRate} showToast={showToast} handleCurrencyChange={handleCurrencyChange} />}
                         {activeTab === 'bill' && <RenderSplitBill splitMembers={splitMembers} setSplitMembers={setSplitMembers} splitExpenses={splitExpenses} setSplitExpenses={setSplitExpenses} currency={currency} exchangeRate={exchangeRate} showToast={showToast} />}
                         {activeTab === 'prep' && <RenderPrepList prepList={prepList} setPrepList={setPrepList} showToast={showToast} />}
-                        {activeTab === 'tools' && <RenderTools currency={currency} exchangeRate={exchangeRate} showToast={showToast} handleExportData={handleExportData} handleImportData={handleImportData} handleResetData={handleResetData} />}
+                        {activeTab === 'tools' && <RenderTools currency={currency} exchangeRate={exchangeRate} handleExportData={handleExportData} handleImportData={handleImportData} handleResetData={handleResetData} />}
                     </main>
 
                     {toastMessage && (
