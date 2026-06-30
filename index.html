@@ -12,6 +12,9 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
     
+    <!-- 載入 html2canvas 以支援圖片匯出 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- 載入 Phosphor Icons (行前清單專屬使用) -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -37,7 +40,7 @@
     <div id="root"></div>
 
     <script type="text/babel" data-presets="react,env">
-        const { useState, useMemo, useEffect } = React;
+        const { useState, useMemo, useEffect, useRef } = React;
 
         // --- 常數設定 ---
         const COLORS = { bg: '#E8ECEF', lightBlue: '#8BA3C5', mediumBlue: '#495B7D', darkText: '#495B7D', white: '#FFFFFF' };
@@ -278,11 +281,11 @@
             // --- 分享邏輯 ---
             const copyToClipboard = (text) => {
                 navigator.clipboard.writeText(text).then(() => {
-                    showToast("✅ 行程與清單已複製到剪貼簿！");
+                    showToast("✅ 文字行程已複製到剪貼簿！");
                 });
             };
 
-            const handleShareData = () => {
+            const handleShareText = () => {
                 let shareText = `✈️ 【${currentTrip.country || '未設定'} · ${currentTrip.city || '未設定'}】旅遊資訊分享\n\n`;
                 
                 const ob = flightInfo.outbound;
@@ -341,7 +344,7 @@
             };
 
             return (
-                <div className="p-4 pb-24 w-full flex flex-col items-center space-y-5">
+                <div className="p-4 pb-24 w-full flex flex-col items-center space-y-5 relative">
                     
                     {/* 區塊 1: 目的地設定 (外框同為 380px) */}
                     <div className="w-full max-w-[380px] space-y-4">
@@ -464,18 +467,19 @@
                         )}
                     </div>
 
-                    {/* 區塊 3: 分享旅遊資訊 (外框同為 380px) 恢復為純文字複製 */}
+                    {/* 區塊 3: 分享旅遊資訊 (外框同為 380px) */}
                     <div className="w-full max-w-[380px]">
                         <div className="bg-white p-5 rounded-2xl border shadow-sm w-full">
                             <h3 className="font-bold text-sm mb-2 flex items-center gap-2" style={{ color: COLORS.darkText }}>
                                 <i className="fa-solid fa-share-nodes" style={{ color: '#8BA3C5' }}></i> 分享旅遊資訊
                             </h3>
-                            <p className="text-[11px] text-gray-400 mb-4 font-medium">將目前行程格式化後分享給旅伴。</p>
-                            <button onClick={handleShareData} className="w-full py-3 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95" style={{ backgroundColor: '#23354D' }}>
-                                <i className="fa-solid fa-copy"></i> 複製行程
+                            <p className="text-[11px] text-gray-400 mb-4 font-medium">將目前的行程安排與購物清單格式化後分享給旅伴。</p>
+                            <button onClick={handleShareText} className="w-full py-3 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95" style={{ backgroundColor: '#23354D' }}>
+                                <i className="fa-solid fa-copy"></i> 複製純文字格式
                             </button>
                         </div>
                     </div>
+
                 </div>
             );
         };
@@ -518,6 +522,37 @@
                     return acc;
                 }, {});
             }, [itinerary]);
+
+            // 💡 一鍵 Google 導航功能
+            const handleGenerateRoute = (dayItems) => {
+                const locations = dayItems
+                    .sort((a, b) => a.time.localeCompare(b.time))
+                    .filter(item => item.address && item.address.trim() !== '');
+
+                if (locations.length === 0) {
+                    showToast("⚠️ 本日行程尚未輸入任何地址！");
+                    return;
+                }
+
+                if (locations.length === 1) {
+                    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locations[0].address)}`;
+                    window.open(url, '_blank');
+                    showToast("🗺️ 已為您開啟單點地圖！");
+                    return;
+                }
+
+                const origin = locations[0].address;
+                const destination = locations[locations.length - 1].address;
+                const waypoints = locations.slice(1, -1).map(loc => loc.address).join('|');
+
+                let url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`;
+                if (waypoints) {
+                    url += `&waypoints=${encodeURIComponent(waypoints)}`;
+                }
+                
+                window.open(url, '_blank');
+                showToast("🚗 Google Maps 多點導航已產生！");
+            };
 
             return (
                 <div className="p-4 pb-24">
@@ -567,7 +602,12 @@
                     <div className="space-y-6">
                         {Object.keys(groupedItinerary).sort().map(day => (
                             <div key={day}>
-                                <h3 className="font-bold text-lg mb-3 flex items-center gap-2" style={{ color: COLORS.mediumBlue }}>📅 {day}</h3>
+                                <div className="flex justify-between items-center mb-3">
+                                    <h3 className="font-bold text-lg flex items-center gap-2" style={{ color: COLORS.mediumBlue }}>📅 {day}</h3>
+                                    <button onClick={() => handleGenerateRoute(groupedItinerary[day])} className="text-[11px] font-bold bg-blue-50 text-blue-600 px-2.5 py-1.5 rounded-lg border border-blue-200 shadow-sm hover:bg-blue-100 transition-colors flex items-center gap-1.5">
+                                        <i className="fa-solid fa-map-location-dot"></i> 一鍵 Google 導航
+                                    </button>
+                                </div>
                                 <div className="space-y-4">
                                     {groupedItinerary[day].map((item) => (
                                         <div key={item.id} className="p-4 rounded-xl shadow-sm bg-white border-l-4" style={{ borderColor: COLORS.mediumBlue }}>
@@ -1094,7 +1134,7 @@
                     setSplitExpenses([...splitExpenses, {
                         id: Date.now(), title, amount: finalAmount, date: expenseDate, currencyCode: selectedCurrency, rate: finalRate, twdAmount: finalTwdAmount, paidBy, mInvolved: involvedMembers, splitType, customAmounts: savedCustomAmounts
                     }]);
-                    showToast("成功記錄一筆記帳！");
+                    showToast("成功記錄一筆手動花費！");
                 }
 
                 setTitle(''); setAmount(''); setExpenseDate('');
@@ -1136,7 +1176,6 @@
                 setIsCustomRate(false);
             };
 
-            // 💡 1. 核心邏輯：將帳單資料根據目前的 splitType 進行過濾
             const filteredExpenses = useMemo(() => {
                 return splitExpenses.filter(exp => {
                     const mode = exp.splitType || 'AA';
@@ -1144,7 +1183,6 @@
                 });
             }, [splitExpenses, splitType]);
 
-            // 💡 2. 計算邏輯：只針對目前過濾後的帳單進行計算
             const splitResults = useMemo(() => {
                 let totalTwd = 0;
                 const itemizedDebts = [];
@@ -1293,7 +1331,6 @@
                         </div>
                     </div>
 
-                    {/* 💡 3. 只顯示目前過濾後的最終分帳明細 */}
                     {filteredExpenses.length > 0 && (
                         <div className={`border p-4 rounded-xl shadow-sm ${splitType === 'AA' ? 'bg-emerald-50 border-emerald-200' : 'bg-indigo-50 border-indigo-200'}`}>
                             <h3 className={`font-bold text-sm mb-3 flex items-center gap-1.5 ${splitType === 'AA' ? 'text-emerald-800' : 'text-indigo-800'}`}>
@@ -1330,7 +1367,6 @@
                         </div>
                     )}
 
-                    {/* 💡 4. 只顯示目前過濾後的歷史設定 */}
                     <div className="bg-white rounded-xl border shadow-sm divide-y">
                         <div className="p-3 bg-gray-50 rounded-t-xl"><span className="text-xs font-bold text-gray-600">已完成的手動記帳項目設定</span></div>
                         {filteredExpenses.map(exp => (
